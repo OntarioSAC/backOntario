@@ -25,7 +25,11 @@ SECRET_KEY = 'django-insecure-))7eve5^6t$o_49t170-jsw5%!&0bauv_oiozhzg0=4uaow&5#
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+<<<<<<< HEAD
 ALLOWED_HOSTS = ['192.168.0.14', '127.0.0.1', 'localhost','192.168.0.117','192.168.0.12']
+=======
+ALLOWED_HOSTS = ['192.168.0.14', '127.0.0.1', 'localhost']
+>>>>>>> f29fca78a5079d453a12354ff714b4f741a9cab9
 
 
 # Application definition
@@ -38,14 +42,20 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+<<<<<<< HEAD
     'corsheaders',
+=======
+>>>>>>> f29fca78a5079d453a12354ff714b4f741a9cab9
     'coreapi',
     'api'
 ]
 
 MIDDLEWARE = [
+<<<<<<< HEAD
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
+=======
+>>>>>>> f29fca78a5079d453a12354ff714b4f741a9cab9
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -81,12 +91,17 @@ WSGI_APPLICATION = 'drf.wsgi.application'
 
 DATABASES = {
     'default': {
+<<<<<<< HEAD
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'ontariodb',
         'USER': 'postgres',
         'PASSWORD': 'Ontariomain000',
         'HOST': 'localhost',
         'PORT': '5432',
+=======
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+>>>>>>> f29fca78a5079d453a12354ff714b4f741a9cab9
     }
 }
 
@@ -134,6 +149,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "rest_framework.schemas.coreapi.AutoSchema",
+<<<<<<< HEAD
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
@@ -162,3 +178,6 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+=======
+}
+>>>>>>> f29fca78a5079d453a12354ff714b4f741a9cab9
