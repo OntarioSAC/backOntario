@@ -102,7 +102,7 @@ class ManzanaSerializer(serializers.ModelSerializer):
 
 # Serializer del modelo Proyecto
 class ProyectoSerializer(serializers.ModelSerializer):
-    id_manzana = ManzanaSerializer(many=True, source='manzana_set')
+    # id_manzana = ManzanaSerializer(many=True, source='manzana_set')
 
     class Meta:
         model = Proyecto
@@ -111,7 +111,7 @@ class ProyectoSerializer(serializers.ModelSerializer):
             'nombre_proyecto',
             'fecha_inicio',
             'fecha_fin',
-            'id_manzana'
+            # 'id_manzana'
         ]
 
 
