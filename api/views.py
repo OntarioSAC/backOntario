@@ -1,15 +1,12 @@
 from rest_framework.response import Response
 from rest_framework import viewsets, status
-from .serializer import AreaSerializer, CanalSerializer, CronogramaPagosSerializer, CuotaSerializer, EstadoSerializer, LoteSerializer, ManzanaSerializer, MedioSerializer, ObservacionesSerializer, OrigenSerializer, PersonaProyectoSerializer, RolSerializer
+from .serializer import AreaSerializer, CanalSerializer, CronogramaPagosSerializer, CuotaSerializer, EstadoSerializer, LoteConEstadosSerializer, LoteSerializer, ManzanaConLotesSerializer, ManzanaSerializer, ManzanasConLotesEstadosSerializer, MedioSerializer, ObservacionesSerializer, OrigenSerializer, PersonaProyectoSerializer, ProyectoConManzanasLotesEstadosSerializer, ProyectoConManzanasSerializer, RolSerializer
 from .serializer import ProyectoSerializer
 from .serializer import PersonaSerializer
 from .models import Area, Canal, CronogramaPagos, Cuota, Estado, Lote, Manzana, Medio, Observaciones, Origen, Persona, PersonaProyecto, Rol
 from .models import Proyecto
 from rest_framework.views import APIView
 
-
-
-    
 
 # View del modelo Proyecto
 class ProyectoViewSet(viewsets.ModelViewSet):
@@ -112,3 +109,39 @@ class OrigenViewSet(viewsets.ModelViewSet):
 class ObservacionesViewSet(viewsets.ModelViewSet):
     queryset = Observaciones.objects.all()
     serializer_class = ObservacionesSerializer
+
+
+# View del endpoint Proyectos&Manzanas
+class ProyectoConManzanasView(APIView):
+    def get(self, request, format=None):
+        proyectos = Proyecto.objects.all()
+        serializer = ProyectoConManzanasSerializer(proyectos, many=True)
+        return Response(serializer.data)
+    
+
+# View del endpoint Manzanas&Lotes
+class ManzanaConLotesView(APIView):
+    def get(self, request, format=None):
+        manzanas = Manzana.objects.all()
+        serializer = ManzanaConLotesSerializer(manzanas, many=True)
+        return Response(serializer.data)    
+    
+# View del endpoint Manzanas&Lotes
+class LoteConEstadosView(APIView):
+    def get(self, request, format=None):
+        lotes = Lote.objects.all()
+        serializer = LoteConEstadosSerializer(lotes, many=True)
+        return Response(serializer.data) 
+    
+    
+class ManzanaConLotesEstadosView(APIView):
+    def get(self, request, format=None):
+        manzanas = Manzana.objects.all()
+        serializer = ManzanasConLotesEstadosSerializer(manzanas, many=True)
+        return Response(serializer.data)
+    
+class ProyectoConManzanasLotesEstadosView(APIView):
+    def get(self, request, format=None):
+        proyectos = Proyecto.objects.all()
+        serializer = ProyectoConManzanasLotesEstadosSerializer(proyectos, many=True)
+        return Response(serializer.data)
