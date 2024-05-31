@@ -1,2 +1,23 @@
-# created by virtualenv automatically
+# Entorno virtual
 venv/
+
+# Archivos de bases de datos locales
+*.sqlite3
+
+# Archivos de compilación de Python
+*.pyc
+__pycache__/
+
+# Configuración del entorno
+.env
+
+# Archivos generados por el sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos de log
+*.log
+
+# Archivos de medios y estáticos generados
+media/
+staticfiles/
