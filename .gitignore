@@ -19,5 +19,6 @@ Thumbs.db
 *.log
 
 # Archivos de medios y estáticos generados
-media/
+media/  
+
 staticfiles/
