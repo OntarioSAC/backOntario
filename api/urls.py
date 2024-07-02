@@ -24,4 +24,9 @@ router.register(r'observaciones',views.ObservacionesViewSet)            # Url de
 urlpatterns=[
     path('', include(router.urls)),
     path('proyecto/<int:pk>/manzanas/', views.ProyectoManzanasView.as_view(), name='proyecto-manzanas'),
+    path('proyectos&manzanas/', views.ProyectoConManzanasView.as_view(), name='proyecto-con-manzanas'),
+    path('manzanas&lotes/', views.ManzanaConLotesView.as_view(), name='manzanas-con-lotes'),
+    path('lotes&estados/', views.LoteConEstadosView.as_view(), name='lotes-con-estados'),
+    path('manzanas&lotes&estados/', views.ManzanaConLotesEstadosView.as_view(), name='manzanas-con-lotes-estados'),
+    path('proyectos&manzanas&lotes&estados/', views.ProyectoConManzanasLotesEstadosView.as_view(), name='proyectos-con-manzanas-lotes-estados'),
 ]

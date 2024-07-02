@@ -1,5 +1,4 @@
 {
-<<<<<<< HEAD
     "python.analysis.autoImportCompletions": true,
     "workbench.colorCustomizations": {
         "activityBar.activeBackground": "#2f7c47",
@@ -21,7 +20,4 @@
         "titleBar.inactiveForeground": "#e7e7e799"
     },
     "peacock.color": "#215732"
-=======
-    "python.analysis.autoImportCompletions": true
->>>>>>> f29fca78a5079d453a12354ff714b4f741a9cab9
 }

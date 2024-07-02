@@ -65,7 +65,7 @@ class EstadoSerializer(serializers.ModelSerializer):
 
 
 class LoteSerializer(serializers.ModelSerializer):
-    id_estado = EstadoSerializer()
+    # id_estado = EstadoSerializer()
 
     class Meta:
         model = Lote
@@ -83,20 +83,20 @@ class LoteSerializer(serializers.ModelSerializer):
             'distancia_izquierda',
             'distancia_fondo',
             'precio_m2',
-            'id_estado'
+            # 'id_estado'
         ]
 
 
 # Serializer del modelo Manzana
 class ManzanaSerializer(serializers.ModelSerializer):
-    id_lote = LoteSerializer(many=True, source='lote_set')
+    # id_lote = LoteSerializer(many=True, source='lote_set')
 
     class Meta:
         model = Manzana
         fields = [
             'id_manzana',
             'nombre_manzana',
-            'id_lote'
+            # 'id_lote'
         ]
 
 
@@ -205,4 +205,77 @@ class ObservacionesSerializer(serializers.ModelSerializer):
             'descripcion_observaciones',
             'adjuntar_informacion',
             'id_persona'
+        ]
+
+# Serializer del endpoint Proyectos&Manzanas
+class ProyectoConManzanasSerializer(serializers.ModelSerializer):
+    id_manzana = ManzanaSerializer(many=True, source='manzana_set')
+
+    class Meta:
+        model = Proyecto
+        fields = [
+            'id_proyecto',
+            'nombre_proyecto',
+            'fecha_inicio',
+            'fecha_fin',
+            'id_manzana'
+        ]
+
+
+class ManzanaConLotesSerializer(serializers.ModelSerializer):
+    id_lote = LoteSerializer(many=True, source='lote_set')
+
+    class Meta:
+        model = Manzana
+        fields = [
+            'id_manzana', 
+            'nombre_manzana', 
+            'id_lote'
+        ]
+
+class LoteConEstadosSerializer(serializers.ModelSerializer):
+    id_estado = EstadoSerializer()
+
+    class Meta:
+        model = Lote
+        fields = [
+            'id_lote',
+            'numero_lote',
+            'area',
+            'perimetro',
+            'colindancia_frente',
+            'colindancia_derecha',
+            'colindancia_izquierda',
+            'colindancia_fondo',
+            'distancia_frente',
+            'distancia_derecha',
+            'distancia_izquierda',
+            'distancia_fondo',
+            'precio_m2',
+            'id_estado'
+        ]
+        
+
+class ManzanasConLotesEstadosSerializer(serializers.ModelSerializer):
+    id_lote = LoteConEstadosSerializer(many=True, source='lote_set')
+
+    class Meta:
+        model = Manzana
+        fields = [
+            'id_manzana', 
+            'nombre_manzana', 
+            'id_lote'
+        ]
+        
+class ProyectoConManzanasLotesEstadosSerializer(serializers.ModelSerializer):
+    id_manzana = ManzanasConLotesEstadosSerializer(many=True, source='manzana_set')
+
+    class Meta:
+        model = Proyecto
+        fields = [
+            'id_proyecto',
+            'nombre_proyecto',
+            'fecha_inicio',
+            'fecha_fin',
+            'id_manzana'
         ]
