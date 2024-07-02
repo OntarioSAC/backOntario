@@ -201,7 +201,7 @@ class Persona(models.Model):
         Medio, on_delete=models.CASCADE, null=True, blank=True)
 
     proyectos = models.ManyToManyField(
-        Proyecto, through='PersonaProyecto', related_name='personas')
+        Proyecto, through='FichaDatosCliente', related_name='personas')
 
     def __str__(self):
         return self.nombres_apellidos
@@ -268,9 +268,9 @@ class Cuota(models.Model):
 # ===========================================
 
 
-# Inicio del modelo PersonaProyecto
+# Inicio del modelo FichaDatosCliente
 
-class PersonaProyecto(models.Model):
+class FichaDatosCliente(models.Model):
     id_persona = models.ForeignKey(Persona, on_delete=models.CASCADE)
     id_proyecto = models.ForeignKey(Proyecto, on_delete=models.CASCADE)
     id_manzana = models.ForeignKey(
@@ -283,6 +283,6 @@ class PersonaProyecto(models.Model):
     def __str__(self):
         return f"Persona {self.id_persona} - Proyecto {self.id_proyecto} - Manzana {self.id_manzana} - Lote {self.id_lote}"
 
-# Fin del modelo PersonaProyecto
+# Fin del modelo FichaDatosCliente
 # ===========================================
 

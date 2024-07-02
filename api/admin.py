@@ -1,14 +1,17 @@
 from django.contrib import admin
 from django import forms
-from .models import Area, Canal, CronogramaPagos, Cuota, Estado, Lote, Manzana, Medio, Observaciones, Origen, Persona, PersonaProyecto, Proyecto, Rol
+from .models import Area, Canal, CronogramaPagos, Cuota, Estado, Lote, Manzana, Medio, Observaciones, Origen, Persona, FichaDatosCliente, Proyecto, Rol
 
-class PersonaProyectoForm(forms.ModelForm):
+class FichaDatosClienteForm(forms.ModelForm):
     class Meta:
-        model = PersonaProyecto
+        model = FichaDatosCliente
         fields = '__all__'
+        
+    class Media:
+        js = ('js/filter_manzanas.js', 'js/filter_lotes.js')  # Incluye ambos archivos JavaScript
     
     def __init__(self, *args, **kwargs):
-        super(PersonaProyectoForm, self).__init__(*args, **kwargs)
+        super(FichaDatosClienteForm, self).__init__(*args, **kwargs)
         if 'id_proyecto' in self.data:
             try:
                 id_proyecto = int(self.data.get('id_proyecto'))
@@ -17,11 +20,18 @@ class PersonaProyectoForm(forms.ModelForm):
                 self.fields['id_manzana'].queryset = Manzana.objects.none()
         elif self.instance.pk:
             self.fields['id_manzana'].queryset = self.instance.id_proyecto.manzana_set.order_by('nombre_manzana')
+        
+        if 'id_manzana' in self.data:
+            try:
+                id_manzana = int(self.data.get('id_manzana'))
+                self.fields['id_lote'].queryset = Lote.objects.filter(id_manzana=id_manzana).order_by('numero_lote')
+            except (ValueError, TypeError):
+                self.fields['id_lote'].queryset = Lote.objects.none()
+        elif self.instance.pk:
+            self.fields['id_lote'].queryset = self.instance.id_manzana.lote_set.order_by('numero_lote')
 
-# Administrador personalizado para el modelo PersonaProyecto
-class PersonaProyectoAdmin(admin.ModelAdmin):
-    form = PersonaProyectoForm
-
+class FichaDatosClienteAdmin(admin.ModelAdmin):
+    form = FichaDatosClienteForm
 
 admin.site.register(Proyecto)
 admin.site.register(Persona)
@@ -29,7 +39,7 @@ admin.site.register(Rol)
 admin.site.register(Lote)
 admin.site.register(Estado)
 admin.site.register(Manzana)
-admin.site.register(PersonaProyecto, PersonaProyectoAdmin)
+admin.site.register(FichaDatosCliente, FichaDatosClienteAdmin)
 admin.site.register(Area)
 admin.site.register(CronogramaPagos)
 admin.site.register(Cuota)
@@ -37,7 +47,3 @@ admin.site.register(Medio)
 admin.site.register(Canal)
 admin.site.register(Origen)
 admin.site.register(Observaciones)
-
-
-
-

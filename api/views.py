@@ -1,12 +1,30 @@
 from rest_framework.response import Response
 from rest_framework import viewsets, status
-from .serializer import AreaSerializer, CanalSerializer, CronogramaPagosSerializer, CuotaSerializer, EstadoSerializer, LoteConEstadosSerializer, LoteSerializer, ManzanaConLotesSerializer, ManzanaSerializer, ManzanasConLotesEstadosSerializer, MedioSerializer, ObservacionesSerializer, OrigenSerializer, PersonaProyectoSerializer, ProyectoConManzanasLotesEstadosSerializer, ProyectoConManzanasSerializer, RolSerializer
+from .serializer import AreaSerializer, CanalSerializer, CronogramaPagosSerializer, CuotaSerializer, EstadoSerializer, LoteConEstadosSerializer, LoteSerializer, ManzanaConLotesSerializer, ManzanaSerializer, ManzanasConLotesEstadosSerializer, MedioSerializer, ObservacionesSerializer, OrigenSerializer, FichaDatosClienteSerializer, ProyectoConManzanasLotesEstadosSerializer, ProyectoConManzanasSerializer, RolSerializer
 from .serializer import ProyectoSerializer
 from .serializer import PersonaSerializer
-from .models import Area, Canal, CronogramaPagos, Cuota, Estado, Lote, Manzana, Medio, Observaciones, Origen, Persona, PersonaProyecto, Rol
+from .models import Area, Canal, CronogramaPagos, Cuota, Estado, Lote, Manzana, Medio, Observaciones, Origen, Persona, FichaDatosCliente, Rol
 from .models import Proyecto
 from rest_framework.views import APIView
 
+# -----------------Pruebas
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
+
+@api_view(['GET'])
+def manzanas_por_proyecto(request, proyecto_id):
+    manzanas = Manzana.objects.filter(id_proyecto=proyecto_id)
+    serializer = ManzanaSerializer(manzanas, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+def lotes_por_manzana(request, manzana_id):
+    lotes = Lote.objects.filter(id_manzana=manzana_id, id_estado_id=1)
+    serializer = LoteSerializer(lotes, many=True)
+    return Response(serializer.data)
+
+# -------------------------------
 
 # View del modelo Proyecto
 class ProyectoViewSet(viewsets.ModelViewSet):
@@ -56,13 +74,13 @@ class ProyectoManzanasView(APIView):
         return Response(serializer.data)
     
     
-# View del modelo PersonaProyecto
-class PersonaProyectoViewSet(viewsets.ModelViewSet):
-    queryset = PersonaProyecto.objects.all()
-    serializer_class = PersonaProyectoSerializer
+# View del modelo FichaDatosCliente
+class FichaDatosClienteViewSet(viewsets.ModelViewSet):
+    queryset = FichaDatosCliente.objects.all()
+    serializer_class = FichaDatosClienteSerializer
     
     def get_queryset(self):
-        queryset = PersonaProyecto.objects.all()
+        queryset = FichaDatosCliente.objects.all()
         id_proyecto = self.request.query_params.get('id_proyecto', None)
         if id_proyecto is not None:
             queryset = queryset.filter(id_proyecto=id_proyecto)

@@ -11,7 +11,7 @@ router.register(r'roles',views.RolViewSet)                              # Url de
 router.register(r'lotes',views.LoteViewSet)                             # Url del modelo Lote
 router.register(r'estados',views.EstadoViewSet)                         # Url del modelo Estado
 router.register(r'manzanas',views.ManzanaViewSet)                       # Url del modelo Manzana
-router.register(r'personaproyectos',views.PersonaProyectoViewSet)       # Url del modelo PersonaProyecto
+router.register(r'fichadatosclientes',views.FichaDatosClienteViewSet)   # Url del modelo FichaDatosCliente
 router.register(r'areas',views.AreaViewSet)                             # Url del modelo Area
 router.register(r'cronogramapagos',views.CronogramaPagosViewSet)        # Url del modelo CronogramaPago
 router.register(r'cuotas',views.CuotaViewSet)                           # Url del modelo Cuota
@@ -29,4 +29,7 @@ urlpatterns=[
     path('lotes&estados/', views.LoteConEstadosView.as_view(), name='lotes-con-estados'),
     path('manzanas&lotes&estados/', views.ManzanaConLotesEstadosView.as_view(), name='manzanas-con-lotes-estados'),
     path('proyectos&manzanas&lotes&estados/', views.ProyectoConManzanasLotesEstadosView.as_view(), name='proyectos-con-manzanas-lotes-estados'),
+    
+    
+    # path('api/manzanas/<int:proyecto_id>/', views.manzanas_por_proyecto, name='manzanas-por-proyecto'),
 ]

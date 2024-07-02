@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Area, Canal, CronogramaPagos, Cuota, Estado, Lote, Manzana, Medio, Observaciones, Origen, Persona, PersonaProyecto, Rol, Proyecto
+from .models import Area, Canal, CronogramaPagos, Cuota, Estado, FichaDatosCliente, Lote, Manzana, Medio, Observaciones, Origen, Persona, Rol, Proyecto
 
 # Serializer del modelo Area
 class AreaSerializer(serializers.ModelSerializer):
@@ -115,10 +115,10 @@ class ProyectoSerializer(serializers.ModelSerializer):
         ]
 
 
-# Serializer del modelo PersonaProyecto
-class PersonaProyectoSerializer(serializers.ModelSerializer):
+# Serializer del modelo FichaDatosCliente
+class FichaDatosClienteSerializer(serializers.ModelSerializer):
     class Meta:
-        model = PersonaProyecto
+        model = FichaDatosCliente
         fields = [
             'id_persona',
             'id_proyecto',
