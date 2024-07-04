@@ -80,10 +80,14 @@ class FichaDatosClienteViewSet(viewsets.ModelViewSet):
     serializer_class = FichaDatosClienteSerializer
     
     def get_queryset(self):
-        queryset = FichaDatosCliente.objects.all()
+        # Filtrar solo las fichas donde el rol es "Cliente Ontario"
+        queryset = FichaDatosCliente.objects.filter(id_persona__id_rol__nombre_rol="Cliente Ontario")
+        
+        # Filtrar por id_proyecto si se proporciona en los parámetros de consulta
         id_proyecto = self.request.query_params.get('id_proyecto', None)
         if id_proyecto is not None:
             queryset = queryset.filter(id_proyecto=id_proyecto)
+        
         return queryset
 
 
@@ -163,3 +167,5 @@ class ProyectoConManzanasLotesEstadosView(APIView):
         proyectos = Proyecto.objects.all()
         serializer = ProyectoConManzanasLotesEstadosSerializer(proyectos, many=True)
         return Response(serializer.data)
+    
+    

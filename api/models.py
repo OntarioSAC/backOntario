@@ -7,8 +7,6 @@ from django.db import models
 
 
 
-
-
 # Inicio del modelo Area
 
 class Area(models.Model):
@@ -221,7 +219,7 @@ class Observaciones(models.Model):
         Persona, on_delete=models.CASCADE, null=True)
 
     def __str__(self):
-        return self.id_observaciones
+        return self.descripcion_observaciones
 
 # Fin del modelo Observaciones
 # ===========================================
@@ -240,8 +238,8 @@ class CronogramaPagos(models.Model):
     TEA = models.FloatField()
     dias_pago = models.CharField(max_length=50)
     descuento = models.FloatField()
-    id_persona = models.ForeignKey(
-        Persona, on_delete=models.CASCADE, null=True, blank=True)
+    cuota_balloon = models.FloatField(null=True, blank=True)
+    cuota_balloon_meses = models.CharField(max_length=50,null=True, blank=True)
 
     def __str__(self):
         return self.descripcion_cpagos
@@ -262,7 +260,7 @@ class Cuota(models.Model):
         CronogramaPagos, on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
-        return self.id_cuota
+        return f"Cuota {self.id_cuota}" 
 
 # Fin del modelo Cuota
 # ===========================================

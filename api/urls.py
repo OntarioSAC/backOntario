@@ -29,7 +29,4 @@ urlpatterns=[
     path('lotes&estados/', views.LoteConEstadosView.as_view(), name='lotes-con-estados'),
     path('manzanas&lotes&estados/', views.ManzanaConLotesEstadosView.as_view(), name='manzanas-con-lotes-estados'),
     path('proyectos&manzanas&lotes&estados/', views.ProyectoConManzanasLotesEstadosView.as_view(), name='proyectos-con-manzanas-lotes-estados'),
-    
-    
-    # path('api/manzanas/<int:proyecto_id>/', views.manzanas_por_proyecto, name='manzanas-por-proyecto'),
 ]

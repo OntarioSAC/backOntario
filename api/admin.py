@@ -30,6 +30,14 @@ class FichaDatosClienteForm(forms.ModelForm):
         elif self.instance.pk:
             self.fields['id_lote'].queryset = self.instance.id_manzana.lote_set.order_by('numero_lote')
 
+        # Asignar solo una vez un cronograma de pagos
+        if self.instance and self.instance.pk:
+            # Incluye el id_cpagos actual en el queryset
+            self.fields['id_cpagos'].queryset = CronogramaPagos.objects.exclude(fichadatoscliente=self.instance) | CronogramaPagos.objects.filter(id_cpagos=self.instance.id_cpagos_id)
+        else:
+            # Excluir todos los id_cpagos que ya están asignados
+            self.fields['id_cpagos'].queryset = CronogramaPagos.objects.exclude(fichadatoscliente__isnull=False)
+        
 class FichaDatosClienteAdmin(admin.ModelAdmin):
     form = FichaDatosClienteForm
 

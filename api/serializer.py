@@ -1,8 +1,14 @@
 from rest_framework import serializers
 from .models import Area, Canal, CronogramaPagos, Cuota, Estado, FichaDatosCliente, Lote, Manzana, Medio, Observaciones, Origen, Persona, Rol, Proyecto
 
+
+class CustomModelSerializer(serializers.ModelSerializer):
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        return {key: value for key, value in ret.items() if value is not None}
+
 # Serializer del modelo Area
-class AreaSerializer(serializers.ModelSerializer):
+class AreaSerializer(CustomModelSerializer):
     class Meta:
         model = Area
         fields = [
@@ -21,9 +27,9 @@ class RolSerializer(serializers.ModelSerializer):
         ]
 
 # Serializer del modelo Persona
-class PersonaSerializer(serializers.ModelSerializer):
-    id_rol = RolSerializer()
-    id_area = AreaSerializer()
+class PersonaSerializer(CustomModelSerializer):
+    rol = RolSerializer(source='id_rol')
+    area = AreaSerializer(source='id_area')
     
     class Meta:
         model = Persona
@@ -42,8 +48,8 @@ class PersonaSerializer(serializers.ModelSerializer):
             'direccion_laboral',
             'antiguedad_laboral',
             'constancia_inicial',
-            'id_rol',
-            'id_area',
+            'rol',
+            'area',
             'id_origen',
             'id_canal',
             'id_medio'
@@ -64,7 +70,7 @@ class EstadoSerializer(serializers.ModelSerializer):
 # Serializer del modelo Lote
 
 
-class LoteSerializer(serializers.ModelSerializer):
+class LoteSerializer(CustomModelSerializer):
     # id_estado = EstadoSerializer()
 
     class Meta:
@@ -88,7 +94,7 @@ class LoteSerializer(serializers.ModelSerializer):
 
 
 # Serializer del modelo Manzana
-class ManzanaSerializer(serializers.ModelSerializer):
+class ManzanaSerializer(CustomModelSerializer):
     # id_lote = LoteSerializer(many=True, source='lote_set')
 
     class Meta:
@@ -101,7 +107,7 @@ class ManzanaSerializer(serializers.ModelSerializer):
 
 
 # Serializer del modelo Proyecto
-class ProyectoSerializer(serializers.ModelSerializer):
+class ProyectoSerializer(CustomModelSerializer):
     # id_manzana = ManzanaSerializer(many=True, source='manzana_set')
 
     class Meta:
@@ -115,24 +121,9 @@ class ProyectoSerializer(serializers.ModelSerializer):
         ]
 
 
-# Serializer del modelo FichaDatosCliente
-class FichaDatosClienteSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = FichaDatosCliente
-        fields = [
-            'id_persona',
-            'id_proyecto',
-            'id_manzana',
-            'id_lote',
-            'id_cpagos'
-        ]
-
-
-
-
 
 # Serializer del modelo CronogramaPagos
-class CronogramaPagosSerializer(serializers.ModelSerializer):
+class CronogramaPagosSerializer(CustomModelSerializer):
     class Meta:
         model = CronogramaPagos
         fields = [
@@ -145,9 +136,31 @@ class CronogramaPagosSerializer(serializers.ModelSerializer):
             'plazo_meses',
             'TEA', 
             'dias_pago',
-            'descuento',
-            'id_persona'
+            'descuento'
         ]
+
+# Serializer del modelo FichaDatosCliente
+class FichaDatosClienteSerializer(CustomModelSerializer):
+    persona = PersonaSerializer(source='id_persona')
+    proyecto = ProyectoSerializer(source='id_proyecto')
+    manzana = ManzanaSerializer(source='id_manzana')
+    lote = LoteSerializer(source='id_lote')
+    cpagos = CronogramaPagosSerializer(source='id_cpagos')
+    
+    class Meta:
+        model = FichaDatosCliente
+        fields = [
+            'persona',
+            'proyecto',
+            'manzana',
+            'lote',
+            'cpagos'
+        ]
+
+
+
+
+
 
 
 # Serializer del modelo Cuota
