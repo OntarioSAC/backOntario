@@ -80,15 +80,19 @@ class FichaDatosClienteViewSet(viewsets.ModelViewSet):
     serializer_class = FichaDatosClienteSerializer
     
     def get_queryset(self):
-        # Filtrar solo las fichas donde el rol es "Cliente Ontario"
         queryset = FichaDatosCliente.objects.filter(id_persona__id_rol__nombre_rol="Cliente Ontario")
-        
-        # Filtrar por id_proyecto si se proporciona en los parámetros de consulta
         id_proyecto = self.request.query_params.get('id_proyecto', None)
         if id_proyecto is not None:
             queryset = queryset.filter(id_proyecto=id_proyecto)
-        
         return queryset
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        id_cpagos = instance.id_cpagos
+        self.perform_destroy(instance)
+        if id_cpagos:
+            id_cpagos.save()  # Re-enable the id_cpagos to be assignable again
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 # View del modelo Area
@@ -167,5 +171,3 @@ class ProyectoConManzanasLotesEstadosView(APIView):
         proyectos = Proyecto.objects.all()
         serializer = ProyectoConManzanasLotesEstadosSerializer(proyectos, many=True)
         return Response(serializer.data)
-    
-    
