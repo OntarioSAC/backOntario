@@ -1,9 +1,9 @@
 from rest_framework.response import Response
 from rest_framework import viewsets, status
-from .serializer import AreaSerializer, CanalSerializer, CronogramaPagosSerializer, CuotaSerializer, EstadoSerializer, LoteConEstadosSerializer, LoteSerializer, ManzanaConLotesSerializer, ManzanaSerializer, ManzanasConLotesEstadosSerializer, MedioSerializer, ObservacionesSerializer, OrigenSerializer, FichaDatosClienteSerializer, ProyectoConManzanasLotesEstadosSerializer, ProyectoConManzanasSerializer, RolSerializer
+from .serializer import AreaSerializer, CanalSerializer, CronogramaPagosSerializer, CuotaSerializer, EstadoSerializer, LoteConEstadosSerializer, LoteSerializer, ManzanaConLotesSerializer, ManzanaSerializer, ManzanasConLotesEstadosSerializer, MedioSerializer, ObservacionesSerializer, OrigenSerializer, FichaDatosClienteSerializer, ProyectoConManzanasLotesEstadosSerializer, ProyectoConManzanasSerializer, RolSerializer, UsuarioSerializer
 from .serializer import ProyectoSerializer
 from .serializer import PersonaSerializer
-from .models import Area, Canal, CronogramaPagos, Cuota, Estado, Lote, Manzana, Medio, Observaciones, Origen, Persona, FichaDatosCliente, Rol
+from .models import Area, Canal, CronogramaPagos, Cuota, Estado, Lote, Manzana, Medio, Observaciones, Origen, Persona, FichaDatosCliente, Rol, Usuario
 from .models import Proyecto
 from rest_framework.views import APIView
 
@@ -171,3 +171,8 @@ class ProyectoConManzanasLotesEstadosView(APIView):
         proyectos = Proyecto.objects.all()
         serializer = ProyectoConManzanasLotesEstadosSerializer(proyectos, many=True)
         return Response(serializer.data)
+
+# View del modelo Usuario
+class UsuarioViewSet(viewsets.ModelViewSet):
+    queryset = Usuario.objects.all()
+    serializer_class = UsuarioSerializer

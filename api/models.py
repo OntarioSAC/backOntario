@@ -168,6 +168,21 @@ class Lote(models.Model):
 # ===========================================
 
 
+# Inicio del modelo Usuario
+
+class Usuario(models.Model):
+
+    id_usuario = models.AutoField(primary_key=True)
+    password = models.CharField(max_length=100, null=True, blank=True)
+
+    def __str__(self):
+        return self.id_usuario
+
+
+# Fin del modelo Usuario
+# ===========================================
+
+
 # Inicio del modelo Persona
 
 class Persona(models.Model):

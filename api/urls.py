@@ -19,6 +19,7 @@ router.register(r'medios',views.MedioViewSet)                           # Url de
 router.register(r'canales',views.CanalViewSet)                          # Url del modelo Canal
 router.register(r'origenes',views.OrigenViewSet)                        # Url del modelo Origen
 router.register(r'observaciones',views.ObservacionesViewSet)            # Url del modelo Observaciones
+router.register(r'usuarios',views.UsuarioViewSet)                       # Url del modelo Usuarios
 
 
 urlpatterns=[

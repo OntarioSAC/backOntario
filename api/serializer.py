@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Area, Canal, CronogramaPagos, Cuota, Estado, FichaDatosCliente, Lote, Manzana, Medio, Observaciones, Origen, Persona, Rol, Proyecto
+from .models import Area, Canal, CronogramaPagos, Cuota, Estado, FichaDatosCliente, Lote, Manzana, Medio, Observaciones, Origen, Persona, Rol, Proyecto, Usuario
 
 
 class CustomModelSerializer(serializers.ModelSerializer):
@@ -291,4 +291,14 @@ class ProyectoConManzanasLotesEstadosSerializer(serializers.ModelSerializer):
             'fecha_inicio',
             'fecha_fin',
             'id_manzana'
+        ]
+
+# Serializer del modelo Usuario
+class UsuarioSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Usuario
+        fields = [
+            'id_usuario',
+            'password'
         ]
