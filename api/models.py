@@ -12,7 +12,7 @@ from django.db import models
 class Area(models.Model):
 
     id_area = models.AutoField(primary_key=True)
-    nombre_area = models.CharField(max_length=100)
+    nombre_area = models.CharField(max_length=100, null=True, blank=True)
     descripcion_area = models.CharField(max_length=255, null=True, blank=True)
 
     def __str__(self):
@@ -68,7 +68,7 @@ class Medio (models.Model):
 
 class Rol(models.Model):
     id_rol = models.AutoField(primary_key=True)
-    nombre_rol = models.CharField(max_length=100)
+    nombre_rol = models.CharField(max_length=100, null=True, blank=True)
 
     def __str__(self):
         return self.nombre_rol
@@ -90,18 +90,6 @@ class Estado(models.Model):
 
 # Fin del modelo Estado
 # ===========================================
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # Inicio del modelo Proyecto
@@ -190,7 +178,7 @@ class Persona(models.Model):
     nombres_apellidos = models.CharField(max_length=255, null=True, blank=True)
     celular = models.CharField(max_length=9, null=True, blank=True)
     dni = models.CharField(max_length=8, null=True, blank=True)
-    correo = models.EmailField()
+    correo = models.EmailField(max_length=100, null=True, blank=True)
     conyuge = models.BooleanField(null=True, blank=True)
     direccion = models.CharField(max_length=255, null=True, blank=True)
     fecha_registro = models.CharField(max_length=255, null=True, blank=True)

@@ -5,7 +5,7 @@ from .models import Area, Canal, CronogramaPagos, Cuota, Estado, FichaDatosClien
 class CustomModelSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         ret = super().to_representation(instance)
-        return {key: value for key, value in ret.items() if value is not None}
+        return {key: value for key, value in ret.items() if value}
 
 # Serializer del modelo Area
 class AreaSerializer(CustomModelSerializer):
@@ -18,7 +18,7 @@ class AreaSerializer(CustomModelSerializer):
         ]
 
 # Serializer del modelo Rol
-class RolSerializer(serializers.ModelSerializer):
+class RolSerializer(CustomModelSerializer):
     class Meta:
         model = Rol
         fields = [
@@ -26,10 +26,41 @@ class RolSerializer(serializers.ModelSerializer):
             'nombre_rol'
         ]
 
+class MedioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Medio
+        fields = [
+            'id_medio',
+            'nombre_medio'
+        ]
+
+
+# Serializer del modelo Canal
+class CanalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Canal
+        fields = [
+            'id_canal',
+            'tipo_canal'
+        ]
+
+
+# Serializer del modelo Origen
+class OrigenSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Origen
+        fields = [
+            'id_origen',
+            'nombre_origen'
+        ]
+
 # Serializer del modelo Persona
 class PersonaSerializer(CustomModelSerializer):
-    rol = RolSerializer(source='id_rol')
-    area = AreaSerializer(source='id_area')
+    rol = RolSerializer(source='id_rol', required=False, allow_null=True)
+    area = AreaSerializer(source='id_area', required=False, allow_null=True)
+    origen = OrigenSerializer(source='id_origen', required=False, allow_null=True)
+    canal = CanalSerializer(source='id_canal', required=False, allow_null=True)
+    medio = MedioSerializer(source='id_medio', required=False, allow_null=True)
     
     class Meta:
         model = Persona
@@ -50,12 +81,14 @@ class PersonaSerializer(CustomModelSerializer):
             'constancia_inicial',
             'rol',
             'area',
-            'id_origen',
-            'id_canal',
-            'id_medio'
+            'origen',
+            'canal',
+            'medio'
         ]
 
-
+    def create(self, validated_data):
+        persona = Persona.objects.create(**validated_data)
+        return persona
 
 
 # Serializer del modelo Estado
@@ -178,33 +211,7 @@ class CuotaSerializer(serializers.ModelSerializer):
 
 
 # Serializer del modelo Medio
-class MedioSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Medio
-        fields = [
-            'id_medio',
-            'nombre_medio'
-        ]
 
-
-# Serializer del modelo Canal
-class CanalSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Canal
-        fields = [
-            'id_canal',
-            'tipo_canal'
-        ]
-
-
-# Serializer del modelo Origen
-class OrigenSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Origen
-        fields = [
-            'id_origen',
-            'nombre_origen'
-        ]
 
 
 # Serializer del modelo Observaciones

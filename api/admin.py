@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django import forms
-from .models import Area, Canal, CronogramaPagos, Cuota, Estado, Lote, Manzana, Medio, Observaciones, Origen, Persona, FichaDatosCliente, Proyecto, Rol
+from .models import Area, Canal, CronogramaPagos, Cuota, Estado, Lote, Manzana, Medio, Observaciones, Origen, Persona, FichaDatosCliente, Proyecto, Rol, Usuario
 
 class FichaDatosClienteForm(forms.ModelForm):
     class Meta:
@@ -55,3 +55,4 @@ admin.site.register(Medio)
 admin.site.register(Canal)
 admin.site.register(Origen)
 admin.site.register(Observaciones)
+admin.site.register(Usuario)
