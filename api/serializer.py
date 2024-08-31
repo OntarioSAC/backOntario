@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Area, Canal, CronogramaPagos, Cuota, Estado, FichaDatosCliente, Lote, Manzana, Medio, Observaciones, Origen, Persona, Rol, Proyecto, Usuario
+from .models import Area, Canal, CronogramaPagos, Cuota, Documento, FichaDatosCliente, Lote, Medio, Observaciones, Origen, Persona, Rol, Proyecto, Usuario
 
 
 class CustomModelSerializer(serializers.ModelSerializer):
@@ -54,19 +54,30 @@ class OrigenSerializer(serializers.ModelSerializer):
             'nombre_origen'
         ]
 
+# Serializer del modelo Documento
+class DocumentoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Documento
+        fields = [
+            'id_documento',
+            'nombre_documento'
+        ]
+
 # Serializer del modelo Persona
 class PersonaSerializer(CustomModelSerializer):
-    rol = RolSerializer(source='id_rol', required=False, allow_null=True)
-    area = AreaSerializer(source='id_area', required=False, allow_null=True)
-    origen = OrigenSerializer(source='id_origen', required=False, allow_null=True)
-    canal = CanalSerializer(source='id_canal', required=False, allow_null=True)
-    medio = MedioSerializer(source='id_medio', required=False, allow_null=True)
+    # rol = RolSerializer(source='id_rol', required=False, allow_null=True)
+    # area = AreaSerializer(source='id_area', required=False, allow_null=True)
+    # origen = OrigenSerializer(source='id_origen', required=False, allow_null=True)
+    # canal = CanalSerializer(source='id_canal', required=False, allow_null=True)
+    # medio = MedioSerializer(source='id_medio', required=False, allow_null=True)
+    # documento = DocumentoSerializer(source='id_documento', required=False, allow_null=True)
     
     class Meta:
         model = Persona
         fields = [
             'id_persona',
-            'nombres_apellidos',
+            'nombres',
+            'apellidos',
             'celular',
             'dni',
             'correo',
@@ -79,38 +90,53 @@ class PersonaSerializer(CustomModelSerializer):
             'direccion_laboral',
             'antiguedad_laboral',
             'constancia_inicial',
-            'rol',
-            'area',
-            'origen',
-            'canal',
-            'medio'
+            'id_rol',
+            'id_area',
+            'id_origen',
+            'id_canal',
+            'id_medio',
+            'id_documento',
         ]
 
-    def create(self, validated_data):
-        persona = Persona.objects.create(**validated_data)
-        return persona
+    def validate(self, data):
+        # Obtener el valor del documento y dni
+        documento = data.get('id_documento')
+        dni = data.get('DNI')
+
+        # Verificar si el documento es DNI
+        if documento and documento.nombre_documento == 'DNI':
+            if dni and len(dni) != 8:
+                raise serializers.ValidationError("El campo DNI debe tener exactamente 8 caracteres.")
+        
+        return data
 
 
-# Serializer del modelo Estado
-class EstadoSerializer(serializers.ModelSerializer):
+
+
+
+
+# Serializer del modelo Proyecto
+class ProyectoSerializer(CustomModelSerializer):
+
     class Meta:
-        model = Estado
+        model = Proyecto
         fields = [
-            'id_estado',
-            'nombre_estado'
+            'id_proyecto',
+            'nombre_proyecto',
+            'fecha_inicio',
         ]
+
 
 # Serializer del modelo Lote
 
-
 class LoteSerializer(CustomModelSerializer):
-    # id_estado = EstadoSerializer()
+    # proyecto = ProyectoSerializer(source='id_proyecto')
 
     class Meta:
         model = Lote
         fields = [
             'id_lote',
-            'numero_lote',
+            'manzana_lote',
             'area',
             'perimetro',
             'colindancia_frente',
@@ -122,35 +148,8 @@ class LoteSerializer(CustomModelSerializer):
             'distancia_izquierda',
             'distancia_fondo',
             'precio_m2',
-            # 'id_estado'
-        ]
-
-
-# Serializer del modelo Manzana
-class ManzanaSerializer(CustomModelSerializer):
-    # id_lote = LoteSerializer(many=True, source='lote_set')
-
-    class Meta:
-        model = Manzana
-        fields = [
-            'id_manzana',
-            'nombre_manzana',
-            # 'id_lote'
-        ]
-
-
-# Serializer del modelo Proyecto
-class ProyectoSerializer(CustomModelSerializer):
-    # id_manzana = ManzanaSerializer(many=True, source='manzana_set')
-
-    class Meta:
-        model = Proyecto
-        fields = [
-            'id_proyecto',
-            'nombre_proyecto',
-            'fecha_inicio',
-            'fecha_fin',
-            # 'id_manzana'
+            'estado',
+            'id_proyecto'
         ]
 
 
@@ -175,22 +174,16 @@ class CronogramaPagosSerializer(CustomModelSerializer):
 # Serializer del modelo FichaDatosCliente
 class FichaDatosClienteSerializer(CustomModelSerializer):
     persona = PersonaSerializer(source='id_persona')
-    proyecto = ProyectoSerializer(source='id_proyecto')
-    manzana = ManzanaSerializer(source='id_manzana')
     lote = LoteSerializer(source='id_lote')
-    cpagos = CronogramaPagosSerializer(source='id_cpagos')
+    cuota = CronogramaPagosSerializer(source='id_cuota')
     
     class Meta:
         model = FichaDatosCliente
         fields = [
             'persona',
-            'proyecto',
-            'manzana',
             'lote',
-            'cpagos'
+            'cuota'
         ]
-
-
 
 
 
@@ -210,9 +203,6 @@ class CuotaSerializer(serializers.ModelSerializer):
         ]
 
 
-# Serializer del modelo Medio
-
-
 
 # Serializer del modelo Observaciones
 class ObservacionesSerializer(serializers.ModelSerializer):
@@ -227,78 +217,7 @@ class ObservacionesSerializer(serializers.ModelSerializer):
             'id_persona'
         ]
 
-# Serializer del endpoint Proyectos&Manzanas
-class ProyectoConManzanasSerializer(serializers.ModelSerializer):
-    id_manzana = ManzanaSerializer(many=True, source='manzana_set')
 
-    class Meta:
-        model = Proyecto
-        fields = [
-            'id_proyecto',
-            'nombre_proyecto',
-            'fecha_inicio',
-            'fecha_fin',
-            'id_manzana'
-        ]
-
-
-class ManzanaConLotesSerializer(serializers.ModelSerializer):
-    id_lote = LoteSerializer(many=True, source='lote_set')
-
-    class Meta:
-        model = Manzana
-        fields = [
-            'id_manzana', 
-            'nombre_manzana', 
-            'id_lote'
-        ]
-
-class LoteConEstadosSerializer(serializers.ModelSerializer):
-    id_estado = EstadoSerializer()
-
-    class Meta:
-        model = Lote
-        fields = [
-            'id_lote',
-            'numero_lote',
-            'area',
-            'perimetro',
-            'colindancia_frente',
-            'colindancia_derecha',
-            'colindancia_izquierda',
-            'colindancia_fondo',
-            'distancia_frente',
-            'distancia_derecha',
-            'distancia_izquierda',
-            'distancia_fondo',
-            'precio_m2',
-            'id_estado'
-        ]
-        
-
-class ManzanasConLotesEstadosSerializer(serializers.ModelSerializer):
-    id_lote = LoteConEstadosSerializer(many=True, source='lote_set')
-
-    class Meta:
-        model = Manzana
-        fields = [
-            'id_manzana', 
-            'nombre_manzana', 
-            'id_lote'
-        ]
-        
-class ProyectoConManzanasLotesEstadosSerializer(serializers.ModelSerializer):
-    id_manzana = ManzanasConLotesEstadosSerializer(many=True, source='manzana_set')
-
-    class Meta:
-        model = Proyecto
-        fields = [
-            'id_proyecto',
-            'nombre_proyecto',
-            'fecha_inicio',
-            'fecha_fin',
-            'id_manzana'
-        ]
 
 # Serializer del modelo Usuario
 class UsuarioSerializer(serializers.ModelSerializer):

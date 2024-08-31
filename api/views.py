@@ -1,36 +1,31 @@
 from rest_framework.response import Response
 from rest_framework import viewsets, status
-from .serializer import AreaSerializer, CanalSerializer, CronogramaPagosSerializer, CuotaSerializer, EstadoSerializer, LoteConEstadosSerializer, LoteSerializer, ManzanaConLotesSerializer, ManzanaSerializer, ManzanasConLotesEstadosSerializer, MedioSerializer, ObservacionesSerializer, OrigenSerializer, FichaDatosClienteSerializer, ProyectoConManzanasLotesEstadosSerializer, ProyectoConManzanasSerializer, RolSerializer, UsuarioSerializer
+from .serializer import AreaSerializer, CanalSerializer, CronogramaPagosSerializer, CuotaSerializer, DocumentoSerializer, LoteSerializer, MedioSerializer, ObservacionesSerializer, OrigenSerializer, FichaDatosClienteSerializer, RolSerializer, UsuarioSerializer
 from .serializer import ProyectoSerializer
 from .serializer import PersonaSerializer
-from .models import Area, Canal, CronogramaPagos, Cuota, Estado, Lote, Manzana, Medio, Observaciones, Origen, Persona, FichaDatosCliente, Rol, Usuario
+from .models import Area, Canal, CronogramaPagos, Cuota, Documento, Lote, Medio, Observaciones, Origen, Persona, FichaDatosCliente, Rol, Usuario
 from .models import Proyecto
 from rest_framework.views import APIView
+
+from rest_framework.permissions import IsAuthenticated
+
 
 # -----------------Pruebas
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 
-@api_view(['GET'])
-def manzanas_por_proyecto(request, proyecto_id):
-    manzanas = Manzana.objects.filter(id_proyecto=proyecto_id)
-    serializer = ManzanaSerializer(manzanas, many=True)
-    return Response(serializer.data)
-
-@api_view(['GET'])
-def lotes_por_manzana(request, manzana_id):
-    lotes = Lote.objects.filter(id_manzana=manzana_id, id_estado_id=1)
-    serializer = LoteSerializer(lotes, many=True)
-    return Response(serializer.data)
-
 # -------------------------------
 
 # View del modelo Proyecto
 class ProyectoViewSet(viewsets.ModelViewSet):
+
     queryset = Proyecto.objects.all()
     serializer_class = ProyectoSerializer
-    
+
+    permission_classes = [IsAuthenticated]
+
+
 
 # View del modelo Persona
 class PersonaViewSet(viewsets.ModelViewSet):
@@ -46,32 +41,11 @@ class RolViewSet(viewsets.ModelViewSet):
 
 # View del modelo Lote
 class LoteViewSet(viewsets.ModelViewSet):
+
+    permission_classes = [IsAuthenticated]
+
     queryset = Lote.objects.all()
     serializer_class = LoteSerializer
-
-
-# View del modelo Estado
-class EstadoViewSet(viewsets.ModelViewSet):
-    queryset = Estado.objects.all()
-    serializer_class = EstadoSerializer
-    
-    
-# View del modelo Manzana
-class ManzanaViewSet(viewsets.ModelViewSet):
-    queryset = Manzana.objects.all()
-    serializer_class = ManzanaSerializer
-    
-    
-
-class ProyectoManzanasView(APIView):
-    def get(self, request, pk, format=None):
-        try:
-            proyecto = Proyecto.objects.get(pk=pk)
-        except Proyecto.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        
-        serializer = ProyectoSerializer(proyecto)
-        return Response(serializer.data)
     
     
 # View del modelo FichaDatosCliente
@@ -137,42 +111,13 @@ class ObservacionesViewSet(viewsets.ModelViewSet):
     serializer_class = ObservacionesSerializer
 
 
-# View del endpoint Proyectos&Manzanas
-class ProyectoConManzanasView(APIView):
-    def get(self, request, format=None):
-        proyectos = Proyecto.objects.all()
-        serializer = ProyectoConManzanasSerializer(proyectos, many=True)
-        return Response(serializer.data)
-    
-
-# View del endpoint Manzanas&Lotes
-class ManzanaConLotesView(APIView):
-    def get(self, request, format=None):
-        manzanas = Manzana.objects.all()
-        serializer = ManzanaConLotesSerializer(manzanas, many=True)
-        return Response(serializer.data)    
-    
-# View del endpoint Manzanas&Lotes
-class LoteConEstadosView(APIView):
-    def get(self, request, format=None):
-        lotes = Lote.objects.all()
-        serializer = LoteConEstadosSerializer(lotes, many=True)
-        return Response(serializer.data) 
-    
-    
-class ManzanaConLotesEstadosView(APIView):
-    def get(self, request, format=None):
-        manzanas = Manzana.objects.all()
-        serializer = ManzanasConLotesEstadosSerializer(manzanas, many=True)
-        return Response(serializer.data)
-    
-class ProyectoConManzanasLotesEstadosView(APIView):
-    def get(self, request, format=None):
-        proyectos = Proyecto.objects.all()
-        serializer = ProyectoConManzanasLotesEstadosSerializer(proyectos, many=True)
-        return Response(serializer.data)
-
 # View del modelo Usuario
 class UsuarioViewSet(viewsets.ModelViewSet):
     queryset = Usuario.objects.all()
     serializer_class = UsuarioSerializer
+
+
+# View del modelo Documentos
+class DocumentoViewSet(viewsets.ModelViewSet):
+    queryset = Documento.objects.all()
+    serializer_class = DocumentoSerializer

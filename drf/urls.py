@@ -24,7 +24,4 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include('api.urls')),
     path('docs/', include_docs_urls(title='Api Documentation')),
-    # path('', include('api.urls')),  # Asegúrate de que 'api.urls' esté incluido
-    path('api/manzanas/<int:proyecto_id>/', views.manzanas_por_proyecto, name='manzanas-por-proyecto'),  # Ruta para obtener las manzanas por proyecto
-    path('api/lotes/<int:manzana_id>/', views.lotes_por_manzana, name='lotes-por-manzana'),  # Nueva ruta para lotes por manzana
 ]

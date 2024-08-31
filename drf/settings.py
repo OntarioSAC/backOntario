@@ -141,7 +141,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "rest_framework.schemas.coreapi.AutoSchema",
+    'DATETIME_FORMAT': "%d/%m/%Y",
+    'DATE_FORMAT': "%d/%m/%Y",
+    'DATE_INPUT_FORMATS': ["%d/%m/%Y", 'iso-8601'],
 }
+
+DATE_INPUT_FORMATS = [
+    '%d/%m/%Y',  # Día/Mes/Año
+    '%Y-%m-%d',  # Año-Mes-Día (formato ISO)
+]
 
 CORS_ALLOW_ALL_ORIGINS = True
 
@@ -169,3 +177,25 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+DATE_FORMAT = 'd/m/Y'
+USE_L10N = False
+
+
+# REST_FRAMEWORK = {
+#     'DEFAULT_PERMISSION_CLASSES': [
+#         'rest_framework.permissions.IsAuthenticated',
+#     ]
+# }
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/hour',  # Para usuarios no autenticados
+        'user': '100/hour',  # Para usuarios autenticados
+    }
+}

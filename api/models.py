@@ -79,27 +79,28 @@ class Rol(models.Model):
 
 
 
-# Inicio del modelo Estado
-
-class Estado(models.Model):
-    id_estado = models.AutoField(primary_key=True)
-    nombre_estado = models.CharField(max_length=50)
-
-    def __str__(self):
-        return self.nombre_estado
-
-# Fin del modelo Estado
-# ===========================================
-
 
 # Inicio del modelo Proyecto
 
 class Proyecto(models.Model):
     id_proyecto = models.AutoField(primary_key=True)
     nombre_proyecto = models.CharField(max_length=100)
-    fecha_inicio = models.CharField(max_length=50, null=True, blank=True)
-    fecha_fin = models.CharField(max_length=50, null=True, blank=True)
+    fecha_inicio = models.DateField(null=True, blank=True)
+    
+    def save(self, *args, **kwargs):
+        if not self.id_proyecto:  # Solo si no hay un ID asignado
+            existing_ids = Proyecto.objects.values_list('id_proyecto', flat=True).order_by('id_proyecto')
+            if existing_ids:
+                missing_ids = set(range(1, max(existing_ids) + 1)) - set(existing_ids)
+                if missing_ids:
+                    self.id_proyecto = min(missing_ids)
+                else:
+                    self.id_proyecto = max(existing_ids) + 1
+            else:
+                # Si no hay objetos en la base de datos, el primer ID será 1
+                self.id_proyecto = 1
 
+        super(Proyecto, self).save(*args, **kwargs)
 
     def __str__(self):
         return self.nombre_proyecto
@@ -109,27 +110,11 @@ class Proyecto(models.Model):
 
 
 
-# Inicio del modelo Manzana
-
-
-class Manzana(models.Model):
-    id_manzana = models.AutoField(primary_key=True)
-    nombre_manzana = models.CharField(max_length=10)
-    id_proyecto = models.ForeignKey(Proyecto, on_delete=models.CASCADE, null=True, blank=True)
-
-    
-    def __str__(self):
-        return f"Manzana {self.nombre_manzana} - Proyecto {self.id_proyecto}" 
-
-# Fin del modelo Manzana
-# ===========================================
-
-
 # Inicio del modelo Lote
 
 class Lote(models.Model):
     id_lote = models.AutoField(primary_key=True)
-    numero_lote = models.CharField(max_length=50, null=True, blank=True)
+    manzana_lote = models.CharField(max_length=50, null=True, blank=True)
     area = models.FloatField(null=True, blank=True)
     perimetro = models.CharField(max_length=50, null=True, blank=True)
     colindancia_frente = models.CharField(max_length=50, null=True, blank=True)
@@ -141,16 +126,28 @@ class Lote(models.Model):
     distancia_izquierda = models.CharField(max_length=50, null=True, blank=True)
     distancia_fondo = models.CharField(max_length=50, null=True, blank=True)
     precio_m2 = models.CharField(max_length=50, null=True, blank=True)
+    estado = models.CharField(max_length=50, null=True, blank=True)
 
-    id_estado = models.ForeignKey(Estado, on_delete=models.CASCADE, null=True, blank=True)
-    id_manzana = models.ForeignKey(Manzana, on_delete=models.CASCADE, null=True, blank=True)
+    id_proyecto = models.ForeignKey(Proyecto, on_delete=models.CASCADE, null=True, blank=True)
     
-    
+    def save(self, *args, **kwargs):
+        if not self.id_lote:  # Solo si no hay un ID asignado
+            existing_ids = Lote.objects.values_list('id_lote', flat=True).order_by('id_lote')
+            if existing_ids:
+                missing_ids = set(range(1, max(existing_ids) + 1)) - set(existing_ids)
+                if missing_ids:
+                    self.id_lote = min(missing_ids)
+                else:
+                    self.id_lote = max(existing_ids) + 1
+            else:
+                # Si no hay objetos en la base de datos, el primer ID será 1
+                self.id_lote = 1
+
+        super(Lote, self).save(*args, **kwargs)
+
     def __str__(self):
-        if self.id_manzana:
-            return f"Lote {self.numero_lote} - Manzana {self.id_manzana.nombre_manzana}"
-        else:
-            return f"Lote {self.numero_lote} - Sin Manzana asignada"
+        return f"Lote {self.manzana_lote}"
+
 
 # Fin del modelo Lote
 # ===========================================
@@ -171,11 +168,27 @@ class Usuario(models.Model):
 # ===========================================
 
 
+# Inicio del modelo Documento
+
+class Documento(models.Model):
+
+    id_documento = models.AutoField(primary_key=True)
+    nombre_documento = models.CharField(max_length=100, null=True, blank=True)
+
+    def __str__(self):
+        return self.nombre_documento
+
+
+# Fin del modelo Usuario
+# ===========================================
+
+
 # Inicio del modelo Persona
 
 class Persona(models.Model):
     id_persona = models.AutoField(primary_key=True)
-    nombres_apellidos = models.CharField(max_length=255, null=True, blank=True)
+    nombres = models.CharField(max_length=255, null=True, blank=True)
+    apellidos = models.CharField(max_length=255, null=True, blank=True)
     celular = models.CharField(max_length=9, null=True, blank=True)
     dni = models.CharField(max_length=8, null=True, blank=True)
     correo = models.EmailField(max_length=100, null=True, blank=True)
@@ -200,12 +213,11 @@ class Persona(models.Model):
         Canal, on_delete=models.CASCADE, null=True, blank=True)
     id_medio = models.ForeignKey(
         Medio, on_delete=models.CASCADE, null=True, blank=True)
-
-    proyectos = models.ManyToManyField(
-        Proyecto, through='FichaDatosCliente', related_name='personas')
+    id_documento = models.ForeignKey(
+        Documento, on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
-        return self.nombres_apellidos
+        return self.nombres
 
 # Fin del modelo Persona
 # ===========================================
@@ -226,6 +238,7 @@ class Observaciones(models.Model):
 
 # Fin del modelo Observaciones
 # ===========================================
+
 
 
 # Inicio del modelo CronogramaPagos
@@ -259,11 +272,12 @@ class Cuota(models.Model):
     fecha_vencimiento = models.CharField(max_length=50)
     deuda_total = models.FloatField()
     amortizacion = models.FloatField()
+
     id_cpagos = models.ForeignKey(
         CronogramaPagos, on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
-        return f"Cuota {self.id_cuota}" 
+        return f"Cuota {self.numero_cuotas}"
 
 # Fin del modelo Cuota
 # ===========================================
@@ -273,16 +287,13 @@ class Cuota(models.Model):
 
 class FichaDatosCliente(models.Model):
     id_persona = models.ForeignKey(Persona, on_delete=models.CASCADE)
-    id_proyecto = models.ForeignKey(Proyecto, on_delete=models.CASCADE)
-    id_manzana = models.ForeignKey(
-        Manzana, on_delete=models.CASCADE, null=True, blank=True)
     id_lote = models.ForeignKey(
         Lote, on_delete=models.CASCADE, null=True, blank=True)
     id_cpagos = models.ForeignKey(
         CronogramaPagos, on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
-        return f"Persona {self.id_persona} - Proyecto {self.id_proyecto} - Manzana {self.id_manzana} - Lote {self.id_lote}"
+        return f"Persona {self.id_persona} - Proyecto {self.id_proyecto} - Lote {self.id_lote}"
 
 # Fin del modelo FichaDatosCliente
 # ===========================================
