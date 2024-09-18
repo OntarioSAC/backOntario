@@ -1,11 +1,9 @@
 from rest_framework.response import Response
 from rest_framework import viewsets, status
-from .serializer import AreaSerializer, CanalSerializer, CronogramaPagosSerializer, CuotaSerializer, DocumentoSerializer, LoteSerializer, MedioSerializer, ObservacionesSerializer, OrigenSerializer, FichaDatosClienteSerializer, RolSerializer, UsuarioSerializer
-from .serializer import ProyectoSerializer
-from .serializer import PersonaSerializer
-from .models import Area, Canal, CronogramaPagos, Cuota, Documento, Lote, Medio, Observaciones, Origen, Persona, FichaDatosCliente, Rol, Usuario
-from .models import Proyecto
+from .serializer import CronogramaPagosSerializer, CuotaSerializer, LoteSerializer, ObservacionesSerializer, FichaDatosClienteSerializer, ProyectoSerializer, PersonaSerializer
+from .models import CronogramaPagos, Cuota, Lote, Observaciones, Persona, FichaDatosCliente, Proyecto
 from rest_framework.views import APIView
+from django.db import connection
 
 from rest_framework.permissions import IsAuthenticated
 
@@ -13,6 +11,8 @@ from rest_framework.permissions import IsAuthenticated
 # -----------------Pruebas
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+
+from api import serializer
 
 
 # -------------------------------
@@ -33,10 +33,36 @@ class PersonaViewSet(viewsets.ModelViewSet):
     serializer_class = PersonaSerializer
 
 
-# View del modelo Rol
-class RolViewSet(viewsets.ModelViewSet):
-    queryset = Rol.objects.all()
-    serializer_class = RolSerializer
+@api_view(['GET'])
+def getData(request):
+    # Obtener todos los objetos de FichaDatosCliente
+    fichas = FichaDatosCliente.objects.all()
+
+    # Prepara la respuesta incluyendo los campos solicitados
+    data = []
+    for ficha in fichas:
+        persona = ficha.id_persona  # Acceder al objeto Persona
+        lote = ficha.id_lote        # Acceder al objeto Lote
+        cpagos = ficha.id_cpagos    # Acceder al objeto CronogramaPagos
+        proyecto = lote.id_proyecto # Acceder al proyecto asociado al lote
+        
+        # Calcular morosidad: si hay deuda, es True
+        morosidad = cpagos.deuda_total_soles > 0 or cpagos.deuda_total_dolares > 0
+        
+        # Prepara la estructura de la respuesta
+        ficha_data = {
+            'id_fichadc': ficha.id_fichadc,  # ID de la ficha
+            'nombres': persona.nombres,
+            'apellidos': persona.apellidos,
+            'proyecto': proyecto.nombre_proyecto,  # Nombre del proyecto
+            'lote': lote.manzana_lote,  # Lote asociado
+            'morosidad': morosidad  # Morosidad (True/False)
+        }
+        data.append(ficha_data)
+
+    return Response(data)
+
+
 
 
 # View del modelo Lote
@@ -47,14 +73,9 @@ class LoteViewSet(viewsets.ModelViewSet):
     queryset = Lote.objects.all()
     serializer_class = LoteSerializer
     
-    
-# View del modelo FichaDatosCliente
-class FichaDatosClienteViewSet(viewsets.ModelViewSet):
-    queryset = FichaDatosCliente.objects.all()
-    serializer_class = FichaDatosClienteSerializer
-    
     def get_queryset(self):
-        queryset = FichaDatosCliente.objects.filter(id_persona__id_rol__nombre_rol="Cliente Ontario")
+        # Filtro usando la relación de id_persona a través de FichaDatosCliente y la tabla Lote
+        queryset = Lote.objects.filter(fichadatoscliente__id_persona__rol="Cliente Ontario")
         id_proyecto = self.request.query_params.get('id_proyecto', None)
         if id_proyecto is not None:
             queryset = queryset.filter(id_proyecto=id_proyecto)
@@ -62,23 +83,57 @@ class FichaDatosClienteViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
-        id_cpagos = instance.id_cpagos
+        id_lote = instance.id_lote
         self.perform_destroy(instance)
-        if id_cpagos:
-            id_cpagos.save()  # Re-enable the id_cpagos to be assignable again
+        if id_lote:
+            id_lote.save()  # Re-enable the id_lote to be assignable again
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    
+# View del modelo FichaDatosCliente
+class FichaDatosClienteViewSet(viewsets.ModelViewSet):
+    queryset = FichaDatosCliente.objects.all()
+    serializer_class = FichaDatosClienteSerializer
+    
+    # def get_queryset(self):
+    #     queryset = FichaDatosCliente.objects.filter(id_persona__id_rol__nombre_rol="Cliente Ontario")
+    #     id_proyecto = self.request.query_params.get('id_proyecto', None)
+    #     if id_proyecto is not None:
+    #         queryset = queryset.filter(id_proyecto=id_proyecto)
+    #     return queryset
 
+    # def destroy(self, request, *args, **kwargs):
+    #     instance = self.get_object()
+    #     id_cpagos = instance.id_cpagos
+    #     self.perform_destroy(instance)
+    #     if id_cpagos:
+    #         id_cpagos.save()  # Re-enable the id_cpagos to be assignable again
+    #     return Response(status=status.HTTP_204_NO_CONTENT)
 
-# View del modelo Area
-class AreaViewSet(viewsets.ModelViewSet):
-    queryset = Area.objects.all()
-    serializer_class = AreaSerializer
 
 
 # View del modelo CronogramaPagos
 class CronogramaPagosViewSet(viewsets.ModelViewSet):
     queryset = CronogramaPagos.objects.all()
     serializer_class = CronogramaPagosSerializer
+
+    def get_queryset(self):
+        # Aquí estás intentando filtrar por un proyecto o algún otro parámetro que esté relacionado con CronogramaPagos
+        id_cpagos = self.request.query_params.get('id_cpagos', None)
+        if id_cpagos is not None:
+            queryset = CronogramaPagos.objects.filter(id_cpagos=id_cpagos)
+        else:
+            queryset = CronogramaPagos.objects.all()    
+        return queryset
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        id_cpagos = instance.id_cpagos
+        self.perform_destroy(instance)
+        # No es necesario guardar el id_cpagos, pues no se reusa de esta manera en Django
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 
 
 # View del modelo Cuota
@@ -87,37 +142,10 @@ class CuotaViewSet(viewsets.ModelViewSet):
     serializer_class = CuotaSerializer
 
 
-# View del modelo Medio
-class MedioViewSet(viewsets.ModelViewSet):
-    queryset = Medio.objects.all()
-    serializer_class = MedioSerializer
-
-
-# View del modelo Canal
-class CanalViewSet(viewsets.ModelViewSet):
-    queryset = Canal.objects.all()
-    serializer_class = CanalSerializer
-
-
-# View del modelo Origen
-class OrigenViewSet(viewsets.ModelViewSet):
-    queryset = Origen.objects.all()
-    serializer_class = OrigenSerializer
-
-
 # View del modelo Observaciones
 class ObservacionesViewSet(viewsets.ModelViewSet):
     queryset = Observaciones.objects.all()
     serializer_class = ObservacionesSerializer
 
 
-# View del modelo Usuario
-class UsuarioViewSet(viewsets.ModelViewSet):
-    queryset = Usuario.objects.all()
-    serializer_class = UsuarioSerializer
 
-
-# View del modelo Documentos
-class DocumentoViewSet(viewsets.ModelViewSet):
-    queryset = Documento.objects.all()
-    serializer_class = DocumentoSerializer

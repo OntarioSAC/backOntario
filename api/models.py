@@ -1,82 +1,12 @@
 from django.db import models
+from django.utils import timezone
+from django.core.exceptions import ValidationError
+
+
 
 
 # Aquí se crean los modelos de la aplicación.
 # Un modelo en Django es una clase que define la estructura de una tabla en la base de datos.
-
-
-
-
-# Inicio del modelo Area
-
-class Area(models.Model):
-
-    id_area = models.AutoField(primary_key=True)
-    nombre_area = models.CharField(max_length=100, null=True, blank=True)
-    descripcion_area = models.CharField(max_length=255, null=True, blank=True)
-
-    def __str__(self):
-        return self.nombre_area
-
-
-# Fin del modelo Area
-# ===========================================
-
-
-# Inicio del modelo Origen
-
-class Origen (models.Model):
-    id_origen = models.AutoField(primary_key=True)
-    nombre_origen = models.CharField(max_length=100)
-
-    def __str__(self):
-        return self.nombre_origen
-
-# Fin del modelo Origen
-# ===========================================
-
-
-# Inicio del modelo Canal
-
-class Canal (models.Model):
-    id_canal = models.AutoField(primary_key=True)
-    tipo_canal = models.CharField(max_length=100)
-
-    def __str__(self):
-        return self.tipo_canal
-
-
-# Fin del modelo Canal
-# ===========================================
-
-
-# Inicio del modelo Medio
-
-class Medio (models.Model):
-    id_medio = models.AutoField(primary_key=True)
-    nombre_medio = models.CharField(max_length=100)
-
-    def __str__(self):
-        return self.nombre_medio
-
-# Fin del modelo Medio
-# ===========================================
-
-
-# Inicio del modelo Rol
-
-
-class Rol(models.Model):
-    id_rol = models.AutoField(primary_key=True)
-    nombre_rol = models.CharField(max_length=100, null=True, blank=True)
-
-    def __str__(self):
-        return self.nombre_rol
-
-
-# Fin del modelo Rol
-# ===========================================
-
 
 
 
@@ -116,16 +46,19 @@ class Lote(models.Model):
     id_lote = models.AutoField(primary_key=True)
     manzana_lote = models.CharField(max_length=50, null=True, blank=True)
     area = models.FloatField(null=True, blank=True)
-    perimetro = models.CharField(max_length=50, null=True, blank=True)
+    perimetro = models.FloatField(max_length=50, null=True, blank=True)
     colindancia_frente = models.CharField(max_length=50, null=True, blank=True)
     colindancia_derecha = models.CharField(max_length=50, null=True, blank=True)
     colindancia_izquierda = models.CharField(max_length=50, null=True, blank=True)
     colindancia_fondo = models.CharField(max_length=50, null=True, blank=True)
-    distancia_frente = models.CharField(max_length=50, null=True, blank=True)
-    distancia_derecha = models.CharField(max_length=50, null=True, blank=True)
-    distancia_izquierda = models.CharField(max_length=50, null=True, blank=True)
-    distancia_fondo = models.CharField(max_length=50, null=True, blank=True)
-    precio_m2 = models.CharField(max_length=50, null=True, blank=True)
+    distancia_frente = models.FloatField(max_length=50, null=True, blank=True)
+    distancia_derecha = models.FloatField(max_length=50, null=True, blank=True)
+    distancia_izquierda = models.FloatField(max_length=50, null=True, blank=True)
+    distancia_fondo = models.FloatField(max_length=50, null=True, blank=True)
+    precio_soles = models.FloatField(max_length=50, null=True, blank=True)
+    precio_dolares = models.FloatField(max_length=50, null=True, blank=True)
+    precio_m2_dolares = models.FloatField(max_length=50, null=True, blank=True)
+    precio_m2_soles = models.FloatField(max_length=50, null=True, blank=True)
     estado = models.CharField(max_length=50, null=True, blank=True)
 
     id_proyecto = models.ForeignKey(Proyecto, on_delete=models.CASCADE, null=True, blank=True)
@@ -153,36 +86,6 @@ class Lote(models.Model):
 # ===========================================
 
 
-# Inicio del modelo Usuario
-
-class Usuario(models.Model):
-
-    id_usuario = models.AutoField(primary_key=True)
-    password = models.CharField(max_length=100, null=True, blank=True)
-
-    def __str__(self):
-        return self.id_usuario
-
-
-# Fin del modelo Usuario
-# ===========================================
-
-
-# Inicio del modelo Documento
-
-class Documento(models.Model):
-
-    id_documento = models.AutoField(primary_key=True)
-    nombre_documento = models.CharField(max_length=100, null=True, blank=True)
-
-    def __str__(self):
-        return self.nombre_documento
-
-
-# Fin del modelo Usuario
-# ===========================================
-
-
 # Inicio del modelo Persona
 
 class Persona(models.Model):
@@ -190,32 +93,30 @@ class Persona(models.Model):
     nombres = models.CharField(max_length=255, null=True, blank=True)
     apellidos = models.CharField(max_length=255, null=True, blank=True)
     celular = models.CharField(max_length=9, null=True, blank=True)
-    dni = models.CharField(max_length=8, null=True, blank=True)
     correo = models.EmailField(max_length=100, null=True, blank=True)
-    conyuge = models.BooleanField(null=True, blank=True)
-    direccion = models.CharField(max_length=255, null=True, blank=True)
-    fecha_registro = models.CharField(max_length=255, null=True, blank=True)
-    profesion = models.CharField(max_length=100, null=True, blank=True)
+    conyuge = models.BooleanField(default=False)  # Por defecto 'No'
+    pais = models.CharField(max_length=255, default="PERU")
+    departamento = models.CharField(max_length=255, null=True, blank=True)
+    provincia = models.CharField(max_length=255, null=True, blank=True)
+    distrito = models.CharField(max_length=255, null=True, blank=True)
+    fecha_creacion = models.DateField(default=timezone.now)  # Fecha por defecto: hoy
     ocupacion = models.CharField(max_length=100, null=True, blank=True)
     centro_trabajo = models.CharField(max_length=255, null=True, blank=True)
-    direccion_laboral = models.CharField(max_length=255, null=True, blank=True)
-    antiguedad_laboral = models.CharField(
-        max_length=100, null=True, blank=True)
-    constancia_inicial = models.CharField(
-        max_length=100, null=True, blank=True)
-    id_rol = models.ForeignKey(
-        Rol, on_delete=models.CASCADE, null=True, blank=True)
-    id_area = models.ForeignKey(
-        Area, on_delete=models.CASCADE, null=True, blank=True)  # id tabla Area
-    id_origen = models.ForeignKey(
-        Origen, on_delete=models.CASCADE, null=True, blank=True)
-    id_canal = models.ForeignKey(
-        Canal, on_delete=models.CASCADE, null=True, blank=True)
-    id_medio = models.ForeignKey(
-        Medio, on_delete=models.CASCADE, null=True, blank=True)
-    id_documento = models.ForeignKey(
-        Documento, on_delete=models.CASCADE, null=True, blank=True)
+    rol = models.CharField(max_length=255, null=True, blank=True)
+    area = models.CharField(max_length=255, null=True, blank=True)
+    origen = models.CharField(max_length=255, null=True, blank=True)
+    canal = models.CharField(max_length=255, null=True, blank=True)
+    medio = models.CharField(max_length=255, null=True, blank=True)
+    usuario = models.BooleanField(default=False)  # Booleano para indicar si es usuario
+    tipo_documento = models.CharField(max_length=255, null=True, blank=True)
+    num_documento = models.CharField(max_length=255, null=True, blank=True)
+    password = models.CharField(max_length=255, null=True, blank=True)  # Campo para la contraseña
 
+    def clean(self):
+        # Validación personalizada: si usuario es True, password no puede estar vacío
+        if self.usuario and not self.password:
+            raise ValidationError("El campo 'password' es obligatorio cuando 'usuario' está activado.")
+    
     def __str__(self):
         return self.nombres
 
@@ -245,39 +146,57 @@ class Observaciones(models.Model):
 
 class CronogramaPagos(models.Model):
     id_cpagos = models.AutoField(primary_key=True)
-    descripcion_cpagos = models.CharField(max_length=255)
-    cuota_inicial = models.FloatField()
-    cuota_mensual = models.FloatField()
-    fecha_inicio_pago = models.CharField(max_length=50)
-    plazo_anios = models.CharField(max_length=50)
-    plazo_meses = models.CharField(max_length=50)
-    TEA = models.FloatField()
-    dias_pago = models.CharField(max_length=50)
-    descuento = models.FloatField()
-    cuota_balloon = models.FloatField(null=True, blank=True)
-    cuota_balloon_meses = models.CharField(max_length=50,null=True, blank=True)
+    cuota_inicial_dolares = models.FloatField(null=True, blank=True)
+    cuota_inicial_soles = models.FloatField(null=True, blank=True)
+    fecha_pago_cuota = models.DateField(null=True, blank=True)
+    fecha_inicio_pago = models.DateField(null=True, blank=True)
+    descuento = models.FloatField(null=True, blank=True)
+    precio_venta_soles = models.FloatField(null=True, blank=True)
+    precio_venta_dolares = models.FloatField(null=True, blank=True)
+    deuda_total_soles= models.FloatField(null=True, blank=True)
+    deuda_total_dolares = models.FloatField(null=True, blank=True)
+    TEA = models.FloatField(default=0)
+    observaciones = models.CharField(max_length=255, null=True, blank=True)
+    tipo_cambio = models.FloatField(null=True, blank=True)
+    numero_cuotas = models.IntegerField(null=True, blank=True)
+    numero_cuotas_pagadas = models.IntegerField(null=True, blank=True)
 
     def __str__(self):
-        return self.descripcion_cpagos
+        return f"CronogramaPagos {self.id_cpagos}"
+
 
 # Fin del modelo CronogramaPagos
 # ===========================================
+
 
 
 # Inicio del modelo Cuota
 
 class Cuota(models.Model):
     id_cuota = models.AutoField(primary_key=True)
-    numero_cuotas = models.CharField(max_length=50)
-    fecha_vencimiento = models.CharField(max_length=50)
-    deuda_total = models.FloatField()
-    amortizacion = models.FloatField()
-
+    fecha_pago_cuota = models.DateField(null=True, blank=True)
+    pago_adelantado = models.BooleanField(default=False)
+    monto_pago_adelantado = models.FloatField(null=True, blank=True)
+    monto_cuota = models.FloatField(null=True, blank=True)
+    morosidad = models.IntegerField(null=True, blank=True)
+    estado = models.BooleanField(default=False)
     id_cpagos = models.ForeignKey(
-        CronogramaPagos, on_delete=models.CASCADE, null=True, blank=True)
+        CronogramaPagos, on_delete=models.CASCADE, null=True)
+
 
     def __str__(self):
-        return f"Cuota {self.numero_cuotas}"
+        return f"Cuota {self.id_cuota}"
+    
+    def clean(self):
+        # Validación para asegurar que monto_pago_adelantado solo se llena si pago_adelantado es True
+        if not self.pago_adelantado and self.monto_pago_adelantado:
+            raise ValidationError("No se puede llenar monto_pago_adelantado si pago_adelantado es False.")
+    
+    def save(self, *args, **kwargs):
+        # Llama al método clean para validar antes de guardar
+        self.clean()
+        super().save(*args, **kwargs)
+
 
 # Fin del modelo Cuota
 # ===========================================
@@ -286,14 +205,16 @@ class Cuota(models.Model):
 # Inicio del modelo FichaDatosCliente
 
 class FichaDatosCliente(models.Model):
-    id_persona = models.ForeignKey(Persona, on_delete=models.CASCADE)
+    id_fichadc = models.AutoField(primary_key=True)
+    estado_legal = models.CharField(null=True, blank=True)
+    id_persona = models.ForeignKey(Persona, on_delete=models.CASCADE, null=True, blank=True)
     id_lote = models.ForeignKey(
         Lote, on_delete=models.CASCADE, null=True, blank=True)
     id_cpagos = models.ForeignKey(
         CronogramaPagos, on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
-        return f"Persona {self.id_persona} - Proyecto {self.id_proyecto} - Lote {self.id_lote}"
+        return f"Persona {self.id_persona} - Cronograma {self.id_cpagos} - Lote {self.id_lote}"
 
 # Fin del modelo FichaDatosCliente
 # ===========================================

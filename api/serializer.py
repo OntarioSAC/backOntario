@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Area, Canal, CronogramaPagos, Cuota, Documento, FichaDatosCliente, Lote, Medio, Observaciones, Origen, Persona, Rol, Proyecto, Usuario
+from .models import CronogramaPagos, Cuota, FichaDatosCliente, Lote, Observaciones, Persona, Proyecto
 
 
 class CustomModelSerializer(serializers.ModelSerializer):
@@ -7,70 +7,10 @@ class CustomModelSerializer(serializers.ModelSerializer):
         ret = super().to_representation(instance)
         return {key: value for key, value in ret.items() if value}
 
-# Serializer del modelo Area
-class AreaSerializer(CustomModelSerializer):
-    class Meta:
-        model = Area
-        fields = [
-            'id_area',
-            'nombre_area',
-            'descripcion_area'
-        ]
 
-# Serializer del modelo Rol
-class RolSerializer(CustomModelSerializer):
-    class Meta:
-        model = Rol
-        fields = [
-            'id_rol',
-            'nombre_rol'
-        ]
-
-class MedioSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Medio
-        fields = [
-            'id_medio',
-            'nombre_medio'
-        ]
-
-
-# Serializer del modelo Canal
-class CanalSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Canal
-        fields = [
-            'id_canal',
-            'tipo_canal'
-        ]
-
-
-# Serializer del modelo Origen
-class OrigenSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Origen
-        fields = [
-            'id_origen',
-            'nombre_origen'
-        ]
-
-# Serializer del modelo Documento
-class DocumentoSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Documento
-        fields = [
-            'id_documento',
-            'nombre_documento'
-        ]
 
 # Serializer del modelo Persona
 class PersonaSerializer(CustomModelSerializer):
-    # rol = RolSerializer(source='id_rol', required=False, allow_null=True)
-    # area = AreaSerializer(source='id_area', required=False, allow_null=True)
-    # origen = OrigenSerializer(source='id_origen', required=False, allow_null=True)
-    # canal = CanalSerializer(source='id_canal', required=False, allow_null=True)
-    # medio = MedioSerializer(source='id_medio', required=False, allow_null=True)
-    # documento = DocumentoSerializer(source='id_documento', required=False, allow_null=True)
     
     class Meta:
         model = Persona
@@ -79,23 +19,23 @@ class PersonaSerializer(CustomModelSerializer):
             'nombres',
             'apellidos',
             'celular',
-            'dni',
             'correo',
             'conyuge',
-            'direccion',
-            'fecha_registro',
-            'profesion',
+            'pais',
+            'departamento',
+            'provincia',
+            'distrito',
+            'fecha_creacion',
             'ocupacion',
             'centro_trabajo',
-            'direccion_laboral',
-            'antiguedad_laboral',
-            'constancia_inicial',
-            'id_rol',
-            'id_area',
-            'id_origen',
-            'id_canal',
-            'id_medio',
-            'id_documento',
+            'rol',
+            'area',
+            'origen',
+            'canal',
+            'medio',
+            'usuario',
+            'tipo_documento',
+            'num_documento',
         ]
 
     def validate(self, data):
@@ -147,7 +87,10 @@ class LoteSerializer(CustomModelSerializer):
             'distancia_derecha',
             'distancia_izquierda',
             'distancia_fondo',
-            'precio_m2',
+            'precio_soles',
+            'precio_dolares',
+            'precio_m2_dolares',
+            'precio_m2_soles',
             'estado',
             'id_proyecto'
         ]
@@ -160,29 +103,55 @@ class CronogramaPagosSerializer(CustomModelSerializer):
         model = CronogramaPagos
         fields = [
             'id_cpagos',
-            'descripcion_cpagos',
-            'cuota_inicial',
-            'cuota_mensual',
+            'cuota_inicial_dolares',
+            'cuota_inicial_soles',
+            'fecha_pago_cuota',
             'fecha_inicio_pago',
-            'plazo_anios',
-            'plazo_meses',
-            'TEA', 
-            'dias_pago',
-            'descuento'
+            'descuento',
+            'precio_venta_soles',
+            'precio_venta_dolares',
+            'deuda_total_soles', 
+            'deuda_total_dolares', 
+            'TEA',
+            'observaciones',
+            'tipo_cambio',
+            'numero_cuotas',
+            'numero_cuotas_pagadas',
         ]
+
+
+
+# Serializer del modelo Cuota
+class CuotaSerializer(CustomModelSerializer):
+    cpagos = CronogramaPagosSerializer(source='id_cpagos')
+
+    class Meta:
+        model = Cuota
+        fields = [
+            'id_cuota',
+            'fecha_pago_cuota',
+            'pago_adelantado',
+            'monto_pago_adelantado',
+            'monto_cuota',
+            'cpagos',
+        ]
+
+
 
 # Serializer del modelo FichaDatosCliente
 class FichaDatosClienteSerializer(CustomModelSerializer):
     persona = PersonaSerializer(source='id_persona')
     lote = LoteSerializer(source='id_lote')
-    cuota = CronogramaPagosSerializer(source='id_cuota')
+    cpagos = CronogramaPagosSerializer(source='id_cpagos')
     
     class Meta:
         model = FichaDatosCliente
         fields = [
+            'id_fichadc',
+            'estado_legal',
             'persona',
             'lote',
-            'cuota'
+            'cpagos'
         ]
 
 
@@ -190,17 +159,17 @@ class FichaDatosClienteSerializer(CustomModelSerializer):
 
 
 # Serializer del modelo Cuota
-class CuotaSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Cuota
-        fields = [
-            'id_cuota',
-            'numero_cuotas',
-            'fecha_vencimiento',
-            'deuda_total',
-            'amortizacion',
-            'id_cpagos'
-        ]
+# class CuotaSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Cuota
+#         fields = [
+#             'id_cuota',
+#             'numero_cuotas',
+#             'fecha_vencimiento',
+#             'deuda_total',
+#             'amortizacion',
+#             'id_cpagos'
+#         ]
 
 
 
@@ -219,12 +188,3 @@ class ObservacionesSerializer(serializers.ModelSerializer):
 
 
 
-# Serializer del modelo Usuario
-class UsuarioSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = Usuario
-        fields = [
-            'id_usuario',
-            'password'
-        ]
