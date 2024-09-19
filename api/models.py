@@ -178,8 +178,8 @@ class Cuota(models.Model):
     pago_adelantado = models.BooleanField(default=False)
     monto_pago_adelantado = models.FloatField(null=True, blank=True)
     monto_cuota = models.FloatField(null=True, blank=True)
-    morosidad = models.IntegerField(null=True, blank=True)
     estado = models.BooleanField(default=False)
+    dias_morosidad = models.IntegerField(null=True, blank=True)
     id_cpagos = models.ForeignKey(
         CronogramaPagos, on_delete=models.CASCADE, null=True)
 

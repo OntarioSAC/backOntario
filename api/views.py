@@ -4,6 +4,8 @@ from .serializer import CronogramaPagosSerializer, CuotaSerializer, LoteSerializ
 from .models import CronogramaPagos, Cuota, Lote, Observaciones, Persona, FichaDatosCliente, Proyecto
 from rest_framework.views import APIView
 from django.db import connection
+from datetime import date
+
 
 from rest_framework.permissions import IsAuthenticated
 
@@ -45,10 +47,23 @@ def getData(request):
         lote = ficha.id_lote        # Acceder al objeto Lote
         cpagos = ficha.id_cpagos    # Acceder al objeto CronogramaPagos
         proyecto = lote.id_proyecto # Acceder al proyecto asociado al lote
-        
-        # Calcular morosidad: si hay deuda, es True
-        morosidad = cpagos.deuda_total_soles > 0 or cpagos.deuda_total_dolares > 0
-        
+
+        # Calcular la morosidad en base a los días de retraso
+        cuotas = Cuota.objects.filter(id_cpagos=cpagos)
+        morosidad = False  # Inicialmente no hay morosidad
+        dias_morosidad = 0  # Valor por defecto para los días de morosidad
+        # Revisar cada cuota para determinar si alguna está en morosidad
+        for cuota in cuotas:
+            if cuota.fecha_pago_cuota and cuota.fecha_pago_cuota < date.today() and not cuota.estado:
+                # Calcular los días de morosidad
+                dias_morosidad = (date.today() - cuota.fecha_pago_cuota).days
+                if dias_morosidad > 0:
+                    morosidad = True
+                    # Actualizar estado a True porque tiene morosidad
+                    cuota.estado = True
+                    cuota.dias_morosidad = dias_morosidad
+                    cuota.save()
+
         # Prepara la estructura de la respuesta
         ficha_data = {
             'id_fichadc': ficha.id_fichadc,  # ID de la ficha
@@ -56,14 +71,61 @@ def getData(request):
             'apellidos': persona.apellidos,
             'proyecto': proyecto.nombre_proyecto,  # Nombre del proyecto
             'lote': lote.manzana_lote,  # Lote asociado
-            'morosidad': morosidad  # Morosidad (True/False)
+            'morosidad': morosidad,  # Morosidad (True/False)
+            'dias_morosidad': dias_morosidad  # Días de morosidad calculados
         }
         data.append(ficha_data)
 
     return Response(data)
 
 
+@api_view(['GET'])
+def get_cronograma_pagos(request, id_fichadc):
+    try:
+        # Obtener la ficha de datos del cliente por el ID
+        ficha = FichaDatosCliente.objects.get(id_fichadc=id_fichadc)
+        
+        # Obtener el cronograma de pagos asociado a la ficha
+        cronograma = ficha.id_cpagos
+        
+        # Obtener todas las cuotas relacionadas con el cronograma de pagos específico
+        cuotas = Cuota.objects.filter(id_cpagos=cronograma)
 
+        # Estructura de la respuesta con datos del cronograma y cuotas asociadas
+        cronograma_data = {
+            'id_cpagos': cronograma.id_cpagos,
+            'cuota_inicial_dolares': cronograma.cuota_inicial_dolares,
+            'cuota_inicial_soles': cronograma.cuota_inicial_soles,
+            'fecha_pago_cuota': cronograma.fecha_pago_cuota,
+            'fecha_inicio_pago': cronograma.fecha_inicio_pago,
+            'descuento': cronograma.descuento,
+            'precio_venta_soles': cronograma.precio_venta_soles,
+            'precio_venta_dolares': cronograma.precio_venta_dolares,
+            'deuda_total_soles': cronograma.deuda_total_soles,
+            'deuda_total_dolares': cronograma.deuda_total_dolares,
+            'TEA': cronograma.TEA,
+            'observaciones': cronograma.observaciones,
+            'tipo_cambio': cronograma.tipo_cambio,
+            'numero_cuotas': cronograma.numero_cuotas,
+            'numero_cuotas_pagadas': cronograma.numero_cuotas_pagadas,
+            'cuotas': [
+                {
+                    'id_cuota': cuota.id_cuota,
+                    'fecha_pago_cuota': cuota.fecha_pago_cuota,
+                    'pago_adelantado': cuota.pago_adelantado,
+                    'monto_pago_adelantado': cuota.monto_pago_adelantado,
+                    'monto_cuota': cuota.monto_cuota,
+                    'estado': cuota.estado,
+                    'dias_morosidad': cuota.dias_morosidad,
+                } for cuota in cuotas
+            ]
+        }
+
+        # Retornar la respuesta con los datos del cronograma y las cuotas
+        return Response(cronograma_data)
+
+    except FichaDatosCliente.DoesNotExist:
+        return Response({'error': 'Ficha de datos no encontrada.'}, status=404)
 
 # View del modelo Lote
 class LoteViewSet(viewsets.ModelViewSet):
