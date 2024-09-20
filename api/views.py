@@ -128,15 +128,17 @@ def get_cronograma_pagos(request, id_fichadc):
 
 
 @api_view(['GET'])
-def get_proyectos(request,id_proyecto):
-    try:
-        # Obtener el proyecto específico por su ID
-        proyecto = Proyecto.objects.get(id_proyecto=id_proyecto)
+def get_proyectos(request):
+    # Obtener todos los proyectos
+    proyectos = Proyecto.objects.all()
 
-        # Obtener los lotes relacionados con el proyecto
+    # Prepara la respuesta incluyendo los campos solicitados
+    data = []
+    for proyecto in proyectos:
+        # Obtener los lotes relacionados con cada proyecto
         lotes = Lote.objects.filter(id_proyecto=proyecto)
 
-        # Estructura de la respuesta con los lotes asociados
+        # Prepara la estructura del proyecto con los lotes asociados
         proyecto_data = {
             'id_proyecto': proyecto.id_proyecto,
             'nombre_proyecto': proyecto.nombre_proyecto,
@@ -153,12 +155,11 @@ def get_proyectos(request,id_proyecto):
                 } for lote in lotes
             ]
         }
+        data.append(proyecto_data)
 
-        # Retornar la respuesta con los datos del proyecto y sus lotes
-        return Response(proyecto_data)
+    # Retornar la respuesta con los datos de proyectos y lotes
+    return Response(data)
 
-    except Proyecto.DoesNotExist:
-        return Response({'error': 'Proyecto no encontrado.'}, status=404)
 
 # View del modelo Lote
 class LoteViewSet(viewsets.ModelViewSet):

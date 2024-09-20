@@ -19,5 +19,5 @@ urlpatterns=[
     path('', include(router.urls)),
     path('dataclient/',views.getData),
     path('get_cronograma_pagos/<int:id_fichadc>/', views.get_cronograma_pagos),
-    path('dataproject/<int:id_proyecto>/',views.get_proyectos),
+    path('dataproject/',views.get_proyectos),
 ]
