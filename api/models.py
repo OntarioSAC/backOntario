@@ -90,6 +90,7 @@ class Persona(models.Model):
     id_persona = models.AutoField(primary_key=True)
     nombres = models.CharField(max_length=255, null=True, blank=True)
     apellidos = models.CharField(max_length=255, null=True, blank=True)
+    genero = models.CharField(max_length=255, null=True, blank=True)
     celular = models.CharField(max_length=9, null=True, blank=True)
     correo = models.EmailField(max_length=100, null=True, blank=True)
     conyuge = models.BooleanField(default=False)  # Por defecto 'No'
@@ -116,7 +117,7 @@ class Persona(models.Model):
             raise ValidationError("El campo 'password' es obligatorio cuando 'usuario' está activado.")
     
     def __str__(self):
-        return self.nombres
+        return f"{self.nombres}"
 
 # Fin del modelo Persona
 # ===========================================
@@ -160,6 +161,7 @@ class CronogramaPagos(models.Model):
     tipo_cambio = models.FloatField(null=True, blank=True)
     numero_cuotas = models.IntegerField(null=True, blank=True)
     numero_cuotas_pagadas = models.IntegerField(null=True, blank=True)
+    tipo_cuota_inicial = models.CharField(max_length=50, null=True, blank=True)
 
     def __str__(self):
         return f"CronogramaPagos {self.id_cpagos}"

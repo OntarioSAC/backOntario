@@ -126,6 +126,40 @@ def get_cronograma_pagos(request, id_fichadc):
     except FichaDatosCliente.DoesNotExist:
         return Response({'error': 'Ficha de datos no encontrada.'}, status=404)
 
+
+@api_view(['GET'])
+def get_proyectos(request,id_proyecto):
+    try:
+        # Obtener el proyecto específico por su ID
+        proyecto = Proyecto.objects.get(id_proyecto=id_proyecto)
+
+        # Obtener los lotes relacionados con el proyecto
+        lotes = Lote.objects.filter(id_proyecto=proyecto)
+
+        # Estructura de la respuesta con los lotes asociados
+        proyecto_data = {
+            'id_proyecto': proyecto.id_proyecto,
+            'nombre_proyecto': proyecto.nombre_proyecto,
+            'fecha_inicio': proyecto.fecha_inicio,
+            'lotes': [
+                {
+                    'id_lote': lote.id_lote,
+                    'manzana_lote': lote.manzana_lote,
+                    'area': lote.area,
+                    'perimetro': lote.perimetro,
+                    'precio_lote_dolares': lote.precio_lote_dolares,
+                    'precio_m2_dolares': lote.precio_m2_dolares,
+                    'estado': lote.estado,
+                } for lote in lotes
+            ]
+        }
+
+        # Retornar la respuesta con los datos del proyecto y sus lotes
+        return Response(proyecto_data)
+
+    except Proyecto.DoesNotExist:
+        return Response({'error': 'Proyecto no encontrado.'}, status=404)
+
 # View del modelo Lote
 class LoteViewSet(viewsets.ModelViewSet):
 

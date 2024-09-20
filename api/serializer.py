@@ -18,6 +18,7 @@ class PersonaSerializer(CustomModelSerializer):
             'id_persona',
             'nombres',
             'apellidos',
+            'genero',
             'celular',
             'correo',
             'conyuge',
@@ -36,6 +37,7 @@ class PersonaSerializer(CustomModelSerializer):
             'usuario',
             'tipo_documento',
             'num_documento',
+            'password',
         ]
 
     def validate(self, data):
@@ -108,6 +110,8 @@ class CronogramaPagosSerializer(CustomModelSerializer):
             'descuento',
             'precio_venta_soles',
             'precio_venta_dolares',
+            'precio_m2_soles',
+            'precio_m2_dolares',
             'deuda_total_soles', 
             'deuda_total_dolares', 
             'TEA',
@@ -115,6 +119,7 @@ class CronogramaPagosSerializer(CustomModelSerializer):
             'tipo_cambio',
             'numero_cuotas',
             'numero_cuotas_pagadas',
+            'tipo_cuota_inicial',
         ]
 
 
