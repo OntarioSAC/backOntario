@@ -127,7 +127,7 @@ def get_cronograma_pagos(request, id_fichadc):
 # View del modelo Lote
 class LoteViewSet(viewsets.ModelViewSet):
 
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     queryset = Lote.objects.all()
     serializer_class = LoteSerializer
