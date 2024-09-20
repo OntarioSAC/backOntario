@@ -47,10 +47,8 @@ def getData(request):
         lote = ficha.id_lote        # Acceder al objeto Lote
         cpagos = ficha.id_cpagos    # Acceder al objeto CronogramaPagos
         proyecto = lote.id_proyecto # Acceder al proyecto asociado al lote
-
         # Calcular la morosidad en base a los días de retraso
         cuotas = Cuota.objects.filter(id_cpagos=cpagos)
-        morosidad = False  # Inicialmente no hay morosidad
         dias_morosidad = 0  # Valor por defecto para los días de morosidad
         # Revisar cada cuota para determinar si alguna está en morosidad
         for cuota in cuotas:
@@ -58,7 +56,6 @@ def getData(request):
                 # Calcular los días de morosidad
                 dias_morosidad = (date.today() - cuota.fecha_pago_cuota).days
                 if dias_morosidad > 0:
-                    morosidad = True
                     # Actualizar estado a True porque tiene morosidad
                     cuota.estado = True
                     cuota.dias_morosidad = dias_morosidad
@@ -71,8 +68,8 @@ def getData(request):
             'apellidos': persona.apellidos,
             'proyecto': proyecto.nombre_proyecto,  # Nombre del proyecto
             'lote': lote.manzana_lote,  # Lote asociado
-            'morosidad': morosidad,  # Morosidad (True/False)
-            'dias_morosidad': dias_morosidad  # Días de morosidad calculados
+            'morosidad': cuota.estado,  # Morosidad (True/False)
+            'dias_morosidad': cuota.dias_morosidad  # Días de morosidad calculados
         }
         data.append(ficha_data)
 
@@ -135,21 +132,21 @@ class LoteViewSet(viewsets.ModelViewSet):
     queryset = Lote.objects.all()
     serializer_class = LoteSerializer
     
-    def get_queryset(self):
-        # Filtro usando la relación de id_persona a través de FichaDatosCliente y la tabla Lote
-        queryset = Lote.objects.filter(fichadatoscliente__id_persona__rol="Cliente Ontario")
-        id_proyecto = self.request.query_params.get('id_proyecto', None)
-        if id_proyecto is not None:
-            queryset = queryset.filter(id_proyecto=id_proyecto)
-        return queryset
+    # def get_queryset(self):
+    #     # Filtro usando la relación de id_persona a través de FichaDatosCliente y la tabla Lote
+    #     queryset = Lote.objects.filter(fichadatoscliente__id_persona__rol="Cliente Ontario")
+    #     id_proyecto = self.request.query_params.get('id_proyecto', None)
+    #     if id_proyecto is not None:
+    #         queryset = queryset.filter(id_proyecto=id_proyecto)
+    #     return queryset
 
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        id_lote = instance.id_lote
-        self.perform_destroy(instance)
-        if id_lote:
-            id_lote.save()  # Re-enable the id_lote to be assignable again
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    # def destroy(self, request, *args, **kwargs):
+    #     instance = self.get_object()
+    #     id_lote = instance.id_lote
+    #     self.perform_destroy(instance)
+    #     if id_lote:
+    #         id_lote.save()  # Re-enable the id_lote to be assignable again
+    #     return Response(status=status.HTTP_204_NO_CONTENT)
     
     
 # View del modelo FichaDatosCliente

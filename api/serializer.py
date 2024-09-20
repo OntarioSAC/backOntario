@@ -70,7 +70,7 @@ class ProyectoSerializer(CustomModelSerializer):
 # Serializer del modelo Lote
 
 class LoteSerializer(CustomModelSerializer):
-    # proyecto = ProyectoSerializer(source='id_proyecto')
+    proyecto = ProyectoSerializer(source='id_proyecto')
 
     class Meta:
         model = Lote
@@ -87,12 +87,10 @@ class LoteSerializer(CustomModelSerializer):
             'distancia_derecha',
             'distancia_izquierda',
             'distancia_fondo',
-            'precio_soles',
-            'precio_dolares',
+            'precio_lote_dolares',
             'precio_m2_dolares',
-            'precio_m2_soles',
             'estado',
-            'id_proyecto'
+            'proyecto'
         ]
 
 
