@@ -66,6 +66,8 @@ def getData(request):
             'id_fichadc': ficha.id_fichadc,  # ID de la ficha
             'nombres': persona.nombres,
             'apellidos': persona.apellidos,
+            'tipo_documento': persona.tipo_documento,
+            'num_documento': persona.num_documento,
             'proyecto': proyecto.nombre_proyecto,  # Nombre del proyecto
             'lote': lote.manzana_lote,  # Lote asociado
             'morosidad': cuota.estado,  # Morosidad (True/False)
