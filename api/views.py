@@ -47,18 +47,22 @@ def getData(request):
         lote = ficha.id_lote        # Acceder al objeto Lote
         cpagos = ficha.id_cpagos    # Acceder al objeto CronogramaPagos
         proyecto = lote.id_proyecto # Acceder al proyecto asociado al lote
+
         # Calcular la morosidad en base a los días de retraso
         cuotas = Cuota.objects.filter(id_cpagos=cpagos)
         dias_morosidad = 0  # Valor por defecto para los días de morosidad
+
         # Revisar cada cuota para determinar si alguna está en morosidad
         for cuota in cuotas:
-            if cuota.fecha_pago_cuota and cuota.fecha_pago_cuota < date.today() and not cuota.estado:
+            if cuota.fecha_pago_cuota and cuota.fecha_pago_cuota < date.today():
                 # Calcular los días de morosidad
                 dias_morosidad = (date.today() - cuota.fecha_pago_cuota).days
+
+                # Si los días de morosidad son mayores a 0, actualizar el estado si no está pagada
                 if dias_morosidad > 0:
-                    # Actualizar estado a True porque tiene morosidad
-                    cuota.estado = True
                     cuota.dias_morosidad = dias_morosidad
+                    if not cuota.estado:
+                        cuota.estado = True  # Actualizar estado a True porque tiene morosidad
                     cuota.save()
 
         # Prepara la estructura de la respuesta
