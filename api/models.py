@@ -162,6 +162,7 @@ class CronogramaPagos(models.Model):
     numero_cuotas = models.IntegerField(null=True, blank=True)
     numero_cuotas_pagadas = models.IntegerField(null=True, blank=True)
     tipo_cuota_inicial = models.CharField(max_length=50, null=True, blank=True)
+    tipo_moneda = models.CharField(default="SOLES",null=True, blank=True)
 
     def __str__(self):
         return f"CronogramaPagos {self.id_cpagos}"
@@ -184,6 +185,7 @@ class Cuota(models.Model):
     dias_morosidad = models.IntegerField(null=True, blank=True)
     id_cpagos = models.ForeignKey(
         CronogramaPagos, on_delete=models.CASCADE, null=True)
+    tipo_moneda = models.CharField(default="SOLES",null=True, blank=True)
 
 
     def __str__(self):
