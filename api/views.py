@@ -1,3 +1,4 @@
+from datetime import datetime, date
 from rest_framework.response import Response
 from rest_framework import viewsets, status
 from .serializer import CronogramaPagosSerializer, CuotaSerializer, LoteSerializer, ObservacionesSerializer, FichaDatosClienteSerializer, ProyectoSerializer, PersonaSerializer
@@ -50,31 +51,35 @@ def getData(request):
 
         # Inicializa morosidad y días de morosidad
         morosidad = False
-        dias_morosidad = 0
 
-        # Calcular la morosidad en base a los días de retraso
+        # Obtener todas las cuotas del cronograma de pagos
         cuotas = Cuota.objects.filter(id_cpagos=cpagos)
 
         if cuotas.exists():
-            # Revisar cada cuota para determinar si alguna está en morosidad
+            # Revisar cada cuota para determinar si hay morosidad
             for cuota in cuotas:
-                if cuota.fecha_pago_cuota and cuota.fecha_pago_cuota < date.today():
-                    # Calcular los días de morosidad
-                    dias_morosidad = (date.today() - cuota.fecha_pago_cuota).days
+                # Inicializamos dias_morosidad en 0 en cada iteración
+                cuota.dias_morosidad = 0
+                cuota.estado = False
 
-                    # Si los días de morosidad son mayores a 0, actualizar el estado si no está pagada
+                if cuota.fecha_pago_cuota:
+                    # Calculamos los días de morosidad si la fecha de pago ya ha pasado
+                    dias_morosidad = (date.today() - cpagos.fecha_pago_cuota).days
+                    
+                    print("dias_morosidad:", dias_morosidad)
+
+                    # Si los días de morosidad son mayores a 0, actualizar el estado
                     if dias_morosidad > 0:
                         cuota.dias_morosidad = dias_morosidad
-                        if not cuota.estado:
-                            cuota.estado = True  # Actualizar estado a True porque tiene morosidad
-                        cuota.save()
-
-            # Morosidad se determina en base a la última cuota en el ciclo
-            morosidad = cuota.estado
-        else:
-            # Si no hay cuotas, morosidad y días de morosidad permanecen en False y 0 respectivamente
-            morosidad = False
-            dias_morosidad = 0
+                        if not cuota.estado:  # Solo marcar morosidad si no está pagada
+                            morosidad = True
+                            cuota.estado = morosidad
+                            print("ingrese: yesyesyes")
+                    else:
+                        # Si no hay morosidad, dias_morosidad se queda en 0
+                        cuota.dias_morosidad = 0
+                        print("aqui cuota.dias_morosidad deber ser 0:", cuota.dias_morosidad)
+                    cuota.save()
 
         # Prepara la estructura de la respuesta
         ficha_data = {
@@ -85,8 +90,8 @@ def getData(request):
             'num_documento': persona.num_documento,
             'proyecto': proyecto.nombre_proyecto,  # Nombre del proyecto
             'lote': lote.manzana_lote,  # Lote asociado
-            'morosidad': morosidad,  # Morosidad (True/False)
-            'dias_morosidad': dias_morosidad  # Días de morosidad calculados
+            'morosidad': cuota.estado,  # Morosidad (True/False)
+            'dias_morosidad': cuota.dias_morosidad  # Días de morosidad calculados
         }
         data.append(ficha_data)
 
