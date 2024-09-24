@@ -51,35 +51,33 @@ def getData(request):
 
         # Inicializa morosidad y días de morosidad
         morosidad = False
+        dias_morosidad = 0  # Inicializa dias_morosidad en 0
 
         # Obtener todas las cuotas del cronograma de pagos
         cuotas = Cuota.objects.filter(id_cpagos=cpagos)
 
         if cuotas.exists():
-            # Revisar cada cuota para determinar si hay morosidad
-            for cuota in cuotas:
-                # Inicializamos dias_morosidad en 0 en cada iteración
-                cuota.dias_morosidad = 0
-                cuota.estado = False
+            # Obtener la última cuota en base a la fecha de pago de la cuota
+            ultima_cuota = cuotas.order_by('-fecha_pago_cuota').first()
 
-                if cuota.fecha_pago_cuota:
-                    # Calculamos los días de morosidad si la fecha de pago ya ha pasado
-                    dias_morosidad = (date.today() - cpagos.fecha_pago_cuota).days
-                    
-                    print("dias_morosidad:", dias_morosidad)
+            if ultima_cuota and ultima_cuota.fecha_pago_cuota:
+                # Calculamos los días de morosidad si la fecha de pago ya ha pasado
+                dias_morosidad = (date.today() - ultima_cuota.fecha_pago_cuota).days
+                
+                print("dias_morosidad:", dias_morosidad)
 
-                    # Si los días de morosidad son mayores a 0, actualizar el estado
-                    if dias_morosidad > 0:
-                        cuota.dias_morosidad = dias_morosidad
-                        if not cuota.estado:  # Solo marcar morosidad si no está pagada
-                            morosidad = True
-                            cuota.estado = morosidad
-                            print("ingrese: yesyesyes")
-                    else:
-                        # Si no hay morosidad, dias_morosidad se queda en 0
-                        cuota.dias_morosidad = 0
-                        print("aqui cuota.dias_morosidad deber ser 0:", cuota.dias_morosidad)
-                    cuota.save()
+                # Si los días de morosidad son mayores a 0, actualizar el estado de morosidad
+                if dias_morosidad > 0:
+                    if not ultima_cuota.estado:  # Solo marcar morosidad si no está pagada
+                        morosidad = True
+                        ultima_cuota.estado = morosidad
+                else:
+                    # Si no hay morosidad, los días de morosidad se quedan en 0
+                    dias_morosidad = 0
+
+            # Guardar los cambios en la cuota si es necesario
+            ultima_cuota.dias_morosidad = dias_morosidad
+            ultima_cuota.save()
 
         # Prepara la estructura de la respuesta
         ficha_data = {
@@ -90,13 +88,12 @@ def getData(request):
             'num_documento': persona.num_documento,
             'proyecto': proyecto.nombre_proyecto,  # Nombre del proyecto
             'lote': lote.manzana_lote,  # Lote asociado
-            'morosidad': cuota.estado,  # Morosidad (True/False)
-            'dias_morosidad': cuota.dias_morosidad  # Días de morosidad calculados
+            'morosidad': ultima_cuota.estado,  # Morosidad (True/False)
+            'dias_morosidad': ultima_cuota.dias_morosidad  # Días de morosidad calculados
         }
         data.append(ficha_data)
 
     return Response(data)
-
 
 @api_view(['GET'])
 def get_cronograma_pagos(request, id_fichadc):
@@ -264,4 +261,52 @@ class ObservacionesViewSet(viewsets.ModelViewSet):
     serializer_class = ObservacionesSerializer
 
 
+@api_view(['PUT'])
+def putMorosidad(request, id_fichadc, id_cuota):
+    try:
+        # Buscar la ficha de datos cliente por ID
+        ficha_cliente = FichaDatosCliente.objects.get(id_fichadc=id_fichadc)
 
+        # Buscar la cuota específica asociada al cronograma de pagos de esta ficha
+        cuota = Cuota.objects.get(id_cuota=id_cuota, id_cpagos=ficha_cliente.id_cpagos)
+
+        # Obtener el cronograma de pagos asociado
+        cronograma_pagos = ficha_cliente.id_cpagos
+
+        # Obtener el nuevo estado del request
+        nuevo_estado = request.data.get('estado', None)
+
+        # Validar que el nuevo estado esté presente en la solicitud
+        if nuevo_estado is None:
+            return Response({"error": "El estado es requerido"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Actualizar el estado de la cuota
+        cuota.estado = nuevo_estado
+
+        # Si el estado es True (hay morosidad), recalcular los días de morosidad
+        if cuota.estado:
+            if cronograma_pagos.fecha_pago_cuota and cronograma_pagos.fecha_pago_cuota < date.today():
+                dias_morosidad = (date.today() - cronograma_pagos.fecha_pago_cuota).days
+                cuota.dias_morosidad = dias_morosidad
+            else:
+                cuota.dias_morosidad = 0  # Si la fecha es futura o hoy, no hay morosidad
+        else:
+            # Si no hay morosidad (estado False), poner días de morosidad en 0
+            cuota.dias_morosidad = 0
+
+        # Guardar los cambios en la cuota
+        cuota.save()
+
+        # Respuesta exitosa
+        return Response({
+            "message": f"Cuota {id_cuota} actualizada para la ficha {id_fichadc}",
+            "estado": cuota.estado,
+            "dias_morosidad": cuota.dias_morosidad
+        }, status=status.HTTP_200_OK)
+
+    except FichaDatosCliente.DoesNotExist:
+        return Response({"error": "Ficha de datos cliente no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+    except Cuota.DoesNotExist:
+        return Response({"error": "Cuota no encontrada o no asociada a esta ficha"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -20,4 +20,6 @@ urlpatterns=[
     path('dataclient/',views.getData),
     path('get_cronograma_pagos/<int:id_fichadc>/', views.get_cronograma_pagos),
     path('dataproject/',views.get_proyectos),
+    path('update_morosidad/<int:id_fichadc>/<int:id_cuota>/', views.putMorosidad),
 ]
+
