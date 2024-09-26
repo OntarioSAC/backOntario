@@ -68,7 +68,7 @@ def getData(request):
 
                 # Si los días de morosidad son mayores a 0, actualizar el estado de morosidad
                 if dias_morosidad > 0:
-                    if not ultima_cuota.estado:  # Solo marcar morosidad si no está pagada
+                    if ultima_cuota.estado:  # Solo marcar morosidad si no está pagada
                         morosidad = True
                         ultima_cuota.estado = morosidad
                 else:
