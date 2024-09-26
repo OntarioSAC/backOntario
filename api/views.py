@@ -125,6 +125,7 @@ def get_cronograma_pagos(request, id_fichadc):
             'numero_cuotas': cronograma.numero_cuotas,
             'numero_cuotas_pagadas': cronograma.numero_cuotas_pagadas,
             'tipo_cuota_inicial':cronograma.tipo_cuota_inicial,
+            'tipo_moneda':cronograma.tipo_moneda,
             'cuotas': [
                 {
                     'id_cuota': cuota.id_cuota,
