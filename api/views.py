@@ -50,7 +50,7 @@ def getData(request):
         proyecto = lote.id_proyecto # Acceder al proyecto asociado al lote
 
         # Inicializa morosidad y días de morosidad
-        morosidad = False
+        # morosidad = False 
         dias_morosidad = 0  # Inicializa dias_morosidad en 0
 
         # Obtener todas las cuotas del cronograma de pagos
