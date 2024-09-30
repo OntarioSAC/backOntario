@@ -137,6 +137,7 @@ def get_cronograma_pagos(request, id_fichadc):
                     'monto_cuota': cuota.monto_cuota,
                     'estado': cuota.estado,
                     'dias_morosidad': cuota.dias_morosidad,
+                    'tipo_moneda': cuota.tipo_moneda
                 } for cuota in cuotas
             ]
         }

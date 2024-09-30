@@ -199,6 +199,15 @@ class Cuota(models.Model):
     def save(self, *args, **kwargs):
         # Llama al método clean para validar antes de guardar
         self.clean()
+
+        # Lógica para incrementar el número de cuotas pagadas
+        if self.estado == False:  # Si la cuota no está en mora
+            # Incrementar el número de cuotas pagadas en el cronograma de pagos asociado
+            cronograma_pagos = self.id_cpagos
+            if self.estado == False and cronograma_pagos:
+                cronograma_pagos.numero_cuotas_pagadas += 1
+                cronograma_pagos.save()
+
         super().save(*args, **kwargs)
 
 
