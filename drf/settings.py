@@ -41,7 +41,9 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'coreapi',
-    'api'
+    'api',
+    'dal',
+    'dal_select2',
 ]
 
 MIDDLEWARE = [

@@ -2,7 +2,7 @@ from django.db import router
 from django.urls import path, include
 from rest_framework import routers
 from api import views
-
+from .views import PersonaAutocomplete, LoteAutocomplete, CpagosAutocomplete
 
 router=routers.DefaultRouter()
 router.register(r'proyectos',views.ProyectoViewSet)                     # Url del modelo Proyecto
@@ -21,5 +21,9 @@ urlpatterns=[
     path('get_cronograma_pagos/<int:id_fichadc>/', views.get_cronograma_pagos),
     path('dataproject/',views.get_proyectos),
     path('update_morosidad/<int:id_fichadc>/<int:id_cuota>/', views.putMorosidad),
+    
+    path('persona-autocomplete/', PersonaAutocomplete.as_view(), name='persona-autocomplete'),
+    path('lote-autocomplete/', LoteAutocomplete.as_view(), name='lote-autocomplete'),
+    path('cpagos-autocomplete/', CpagosAutocomplete.as_view(), name='cpagos-autocomplete'),
 ]
 

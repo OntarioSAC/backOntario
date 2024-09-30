@@ -1,3 +1,4 @@
+from dal import autocomplete
 from datetime import datetime, date
 from rest_framework.response import Response
 from rest_framework import viewsets, status
@@ -6,6 +7,7 @@ from .models import CronogramaPagos, Cuota, Lote, Observaciones, Persona, FichaD
 from rest_framework.views import APIView
 from django.db import connection
 from datetime import date
+from django.db.models import Q
 
 
 from rest_framework.permissions import IsAuthenticated
@@ -312,3 +314,48 @@ def putMorosidad(request, id_fichadc, id_cuota):
         return Response({"error": "Cuota no encontrada o no asociada a esta ficha"}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+
+class PersonaAutocomplete(autocomplete.Select2QuerySetView):
+    def get_queryset(self):
+        # Si el usuario no está autenticado, no devolver ningún resultado.
+        if not self.request.user.is_authenticated:
+            return Persona.objects.none()
+
+        qs = Persona.objects.all()
+
+        if self.q:
+            # Buscar por nombres o num_documento
+            qs = qs.filter(Q(nombres__icontains=self.q) | Q(num_documento__icontains=self.q))
+
+        return qs
+
+class LoteAutocomplete(autocomplete.Select2QuerySetView):
+    def get_queryset(self):
+        # Si el usuario no está autenticado, no devolver ningún resultado.
+        if not self.request.user.is_authenticated:
+            return Lote.objects.none()
+
+        # Obtener todos los objetos de Lote
+        qs = Lote.objects.all()
+
+        if self.q:
+            search_term = self.q.strip()
+
+            # Usar un filtro de coincidencia exacta si se requiere precisión total
+            qs = qs.filter(manzana_lote__iexact=search_term)
+
+        return qs
+
+class CpagosAutocomplete(autocomplete.Select2QuerySetView):
+    def get_queryset(self):
+        if not self.request.user.is_authenticated:
+            return CronogramaPagos.objects.none()
+
+        qs = CronogramaPagos.objects.all()
+
+        if self.q:
+            qs = qs.filter(id_cpagos__icontains=self.q)
+
+        return qs

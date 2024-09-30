@@ -77,7 +77,7 @@ class Lote(models.Model):
         super(Lote, self).save(*args, **kwargs)
 
     def __str__(self):
-        return f"Lote {self.manzana_lote}"
+        return f"Lote {self.manzana_lote} - Proyecto {self.id_proyecto.nombre_proyecto}"
 
 
 # Fin del modelo Lote
@@ -117,7 +117,7 @@ class Persona(models.Model):
             raise ValidationError("El campo 'password' es obligatorio cuando 'usuario' está activado.")
     
     def __str__(self):
-        return f"{self.nombres}"
+        return f"{self.nombres} - {self.num_documento}"
 
 # Fin del modelo Persona
 # ===========================================
