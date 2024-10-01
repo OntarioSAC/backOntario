@@ -191,6 +191,8 @@ DATE_FORMAT = 'd/m/Y'
 USE_L10N = False
 
 
+
+
 # REST_FRAMEWORK = {
 #     'DEFAULT_PERMISSION_CLASSES': [
 #         'rest_framework.permissions.IsAuthenticated',

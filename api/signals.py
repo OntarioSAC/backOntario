@@ -1,7 +1,11 @@
 # signals.py
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
-from .models import FichaDatosCliente, CronogramaPagos
+from .models import FichaDatosCliente, CronogramaPagos, Cuota
+from django.db.models.signals import post_save
+from datetime import timedelta, date
+
+
 
 @receiver(post_delete, sender=FichaDatosCliente)
 def make_cronograma_pagos_available(sender, instance, **kwargs):
@@ -9,3 +13,5 @@ def make_cronograma_pagos_available(sender, instance, **kwargs):
     # debe volver a estar disponible para ser asignado nuevamente
     if instance.id_cpagos:
         instance.id_cpagos.save()
+
+

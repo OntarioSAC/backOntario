@@ -1,7 +1,7 @@
 from dal import autocomplete
 from django import forms
 from django.contrib import admin
-from .models import CronogramaPagos, Cuota, Lote, Observaciones, Persona, FichaDatosCliente, Proyecto
+from .models import CronogramaPagos, Cuota, CuotaInicialFraccionada, Lote, Observaciones, Persona, FichaDatosCliente, Proyecto
 
 
 
@@ -12,6 +12,7 @@ admin.site.register(Lote)
 admin.site.register(CronogramaPagos)
 admin.site.register(Cuota)
 admin.site.register(Observaciones)
+admin.site.register(CuotaInicialFraccionada)
 
 
 class FichaDatosClienteForm(forms.ModelForm):

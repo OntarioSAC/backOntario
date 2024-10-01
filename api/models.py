@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from datetime import timedelta
+from datetime import date
 
 
 
@@ -163,6 +165,10 @@ class CronogramaPagos(models.Model):
     numero_cuotas_pagadas = models.IntegerField(null=True, blank=True)
     tipo_cuota_inicial = models.CharField(max_length=50, null=True, blank=True)
     tipo_moneda = models.CharField(default="SOLES",null=True, blank=True)
+    inicial_separacion = models.FloatField(null=True, blank=True)
+    inicial_f1 = models.FloatField(null=True, blank=True)  # Primer fracción
+    inicial_f2 = models.FloatField(null=True, blank=True)  # Segunda fracción
+
 
     def __str__(self):
         return f"CronogramaPagos {self.id_cpagos}"
@@ -181,7 +187,7 @@ class Cuota(models.Model):
     pago_adelantado = models.BooleanField(default=False)
     monto_pago_adelantado = models.FloatField(null=True, blank=True)
     monto_cuota = models.FloatField(null=True, blank=True)
-    estado = models.BooleanField(default=False)
+    estado = models.BooleanField(default=False) # True: moroso, False: pagado
     dias_morosidad = models.IntegerField(null=True, blank=True)
     id_cpagos = models.ForeignKey(
         CronogramaPagos, on_delete=models.CASCADE, null=True)
@@ -196,19 +202,6 @@ class Cuota(models.Model):
         if not self.pago_adelantado and self.monto_pago_adelantado:
             raise ValidationError("No se puede llenar monto_pago_adelantado si pago_adelantado es False.")
     
-    def save(self, *args, **kwargs):
-        # Llama al método clean para validar antes de guardar
-        self.clean()
-
-        # Lógica para incrementar el número de cuotas pagadas
-        if self.estado == False:  # Si la cuota no está en mora
-            # Incrementar el número de cuotas pagadas en el cronograma de pagos asociado
-            cronograma_pagos = self.id_cpagos
-            if self.estado == False and cronograma_pagos:
-                cronograma_pagos.numero_cuotas_pagadas += 1
-                cronograma_pagos.save()
-
-        super().save(*args, **kwargs)
 
 
 # Fin del modelo Cuota
@@ -232,3 +225,16 @@ class FichaDatosCliente(models.Model):
 # Fin del modelo FichaDatosCliente
 # ===========================================
 
+
+# Inicio del modelo CuotaInicialFraccionada
+
+class CuotaInicialFraccionada(models.Model):
+    id_cuota_inicial = models.AutoField(primary_key=True)
+    monto_inicial = models.FloatField(null=True, blank=True)
+    id_cpagos = models.ForeignKey(CronogramaPagos, on_delete=models.CASCADE, related_name='cuotas_iniciales_fraccionadas')
+
+    def __str__(self):
+        return f"Cuota Inicial {self.id_cuota_inicial} - Cronograma {self.id_cpagos.id_cpagos}"
+
+# Fin del modelo FichaDatosCliente
+# ===========================================

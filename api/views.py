@@ -2,12 +2,15 @@ from dal import autocomplete
 from datetime import datetime, date
 from rest_framework.response import Response
 from rest_framework import viewsets, status
-from .serializer import CronogramaPagosSerializer, CuotaSerializer, LoteSerializer, ObservacionesSerializer, FichaDatosClienteSerializer, ProyectoSerializer, PersonaSerializer
-from .models import CronogramaPagos, Cuota, Lote, Observaciones, Persona, FichaDatosCliente, Proyecto
+from .serializer import CronogramaPagosSerializer, CuotaInicialFraccionadaSerializer, CuotaSerializer, LoteSerializer, ObservacionesSerializer, FichaDatosClienteSerializer, ProyectoSerializer, PersonaSerializer
+from .models import CronogramaPagos, Cuota, CuotaInicialFraccionada, Lote, Observaciones, Persona, FichaDatosCliente, Proyecto
 from rest_framework.views import APIView
 from django.db import connection
-from datetime import date
+from datetime import timedelta, date
 from django.db.models import Q
+import requests
+from django.conf import settings
+
 
 
 from rest_framework.permissions import IsAuthenticated
@@ -38,6 +41,13 @@ class PersonaViewSet(viewsets.ModelViewSet):
     serializer_class = PersonaSerializer
 
 
+# View del modelo Persona
+class CuotaInicialFraccionadaViewSet(viewsets.ModelViewSet):
+    queryset = CuotaInicialFraccionada.objects.all()
+    serializer_class = CuotaInicialFraccionadaSerializer
+
+
+
 @api_view(['GET'])
 def getData(request):
     # Obtener todos los objetos de FichaDatosCliente
@@ -51,35 +61,36 @@ def getData(request):
         cpagos = ficha.id_cpagos    # Acceder al objeto CronogramaPagos
         proyecto = lote.id_proyecto # Acceder al proyecto asociado al lote
 
-        # Inicializa morosidad y días de morosidad
-        # morosidad = False 
-        dias_morosidad = 0  # Inicializa dias_morosidad en 0
+        # Inicializa morosidad general
+        morosidad_general = False
+        dias_morosidad_total = 0  # Inicializa los días de morosidad en 0
 
         # Obtener todas las cuotas del cronograma de pagos
-        cuotas = Cuota.objects.filter(id_cpagos=cpagos)
+        cuotas = Cuota.objects.filter(id_cpagos=cpagos).order_by('fecha_pago_cuota')
 
-        if cuotas.exists():
-            # Obtener la última cuota en base a la fecha de pago de la cuota
-            ultima_cuota = cuotas.order_by('-fecha_pago_cuota').first()
-
-            if ultima_cuota and ultima_cuota.fecha_pago_cuota:
+        # Revisamos todas las cuotas
+        for cuota in cuotas:
+            # Si la cuota no ha sido pagada (estado=True) y la fecha de pago ya ha pasado
+            if cuota.estado:  # estado=True significa que no ha sido pagada
                 # Calculamos los días de morosidad si la fecha de pago ya ha pasado
-                dias_morosidad = (date.today() - ultima_cuota.fecha_pago_cuota).days
-                
-                print("dias_morosidad:", dias_morosidad)
+                dias_morosidad = (date.today() - cuota.fecha_pago_cuota).days
 
-                # Si los días de morosidad son mayores a 0, actualizar el estado de morosidad
+                # Solo consideramos morosidad si los días de morosidad son positivos
                 if dias_morosidad > 0:
-                    if ultima_cuota.estado:  # Solo marcar morosidad si no está pagada
-                        morosidad = True
-                        ultima_cuota.estado = morosidad
-                else:
-                    # Si no hay morosidad, los días de morosidad se quedan en 0
-                    dias_morosidad = 0
+                    morosidad_general = True
+                    dias_morosidad_total += dias_morosidad  # Sumamos los días de morosidad
 
-            # Guardar los cambios en la cuota si es necesario
-            ultima_cuota.dias_morosidad = dias_morosidad
-            ultima_cuota.save()
+                    # Actualiza la cuota con los días de morosidad y guarda
+                    cuota.dias_morosidad = dias_morosidad
+                    cuota.save()
+                else:
+                    # Si no hay morosidad (fecha futura), la dejamos en 0
+                    cuota.dias_morosidad = 0
+                    cuota.save()
+
+        # Si no se encontraron cuotas morosas, los días de morosidad siguen siendo 0
+        if not morosidad_general:
+            dias_morosidad_total = 0
 
         # Prepara la estructura de la respuesta
         ficha_data = {
@@ -90,8 +101,8 @@ def getData(request):
             'num_documento': persona.num_documento,
             'proyecto': proyecto.nombre_proyecto,  # Nombre del proyecto
             'lote': lote.manzana_lote,  # Lote asociado
-            'morosidad': ultima_cuota.estado,  # Morosidad (True/False)
-            'dias_morosidad': ultima_cuota.dias_morosidad  # Días de morosidad calculados
+            'morosidad': morosidad_general,  # Morosidad (True/False)
+            'dias_morosidad': dias_morosidad_total  # Días de morosidad calculados en todas las cuotas morosas
         }
         data.append(ficha_data)
 
@@ -360,3 +371,46 @@ class CpagosAutocomplete(autocomplete.Select2QuerySetView):
             qs = qs.filter(id_cpagos__icontains=self.q)
 
         return qs
+    
+
+class VerificarYCriarCuotas(APIView):
+    def get(self, request, *args, **kwargs):
+        # Obtener todos los cronogramas de pagos
+        cronogramas = CronogramaPagos.objects.all()
+
+        # Lista para almacenar resultados de los cronogramas procesados
+        resultados = []
+
+        for cronograma in cronogramas:
+            # Obtener la última cuota del cronograma
+            ultima_cuota = Cuota.objects.filter(id_cpagos=cronograma).order_by('-fecha_pago_cuota').first()
+
+            if ultima_cuota:
+                # Verificar si la fecha de la última cuota no es None y ya ha pasado
+                if ultima_cuota.fecha_pago_cuota and ultima_cuota.fecha_pago_cuota < date.today():
+                    # Si ha pasado, crear una nueva cuota 30 días después de la última
+                    nueva_fecha_pago_cuota = ultima_cuota.fecha_pago_cuota + timedelta(days=30)
+
+                    # Verificar si no excede el número de cuotas
+                    cuotas_existentes = Cuota.objects.filter(id_cpagos=cronograma).count()
+                    if cuotas_existentes < cronograma.numero_cuotas:
+                        nueva_cuota = Cuota(
+                            fecha_pago_cuota=nueva_fecha_pago_cuota,
+                            id_cpagos=cronograma,
+                            monto_cuota=ultima_cuota.monto_cuota,  # Ajusta esto si el monto varía
+                            estado=True,  # Asumimos que está morosa inicialmente
+                            tipo_moneda=ultima_cuota.tipo_moneda
+                        )
+                        nueva_cuota.save()
+                        resultados.append(f"Nueva cuota creada para cronograma {cronograma.id_cpagos} con fecha {nueva_cuota.fecha_pago_cuota}")
+                    else:
+                        resultados.append(f"Ya se alcanzó el número máximo de cuotas para cronograma {cronograma.id_cpagos}")
+                else:
+                    if ultima_cuota.fecha_pago_cuota is None:
+                        resultados.append(f"La última cuota del cronograma {cronograma.id_cpagos} no tiene fecha de pago")
+                    else:
+                        resultados.append(f"La última cuota del cronograma {cronograma.id_cpagos} aún no ha pasado")
+            else:
+                resultados.append(f"El cronograma {cronograma.id_cpagos} no tiene cuotas")
+
+        return Response({"resultados": resultados})

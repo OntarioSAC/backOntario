@@ -160,22 +160,6 @@ class FichaDatosClienteSerializer(CustomModelSerializer):
 
 
 
-
-# Serializer del modelo Cuota
-# class CuotaSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Cuota
-#         fields = [
-#             'id_cuota',
-#             'numero_cuotas',
-#             'fecha_vencimiento',
-#             'deuda_total',
-#             'amortizacion',
-#             'id_cpagos'
-#         ]
-
-
-
 # Serializer del modelo Observaciones
 class ObservacionesSerializer(serializers.ModelSerializer):
     id_persona = PersonaSerializer()
@@ -191,3 +175,14 @@ class ObservacionesSerializer(serializers.ModelSerializer):
 
 
 
+# Serializer del modelo CuotaInicialFraccionada
+class CuotaInicialFraccionadaSerializer(serializers.ModelSerializer):
+    id_cpagos = CronogramaPagosSerializer()
+
+    class Meta:
+        model = Observaciones
+        fields = [
+            'id_cuota_inicial',
+            'monto_inicial',
+            'id_cpagos'
+        ]
