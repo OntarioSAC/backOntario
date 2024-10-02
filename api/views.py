@@ -10,6 +10,13 @@ from datetime import timedelta, date
 from django.db.models import Q
 import requests
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
+
+from django.http import JsonResponse
+from django.contrib.auth.hashers import check_password
+from django.contrib.auth.hashers import make_password
+from rest_framework_simplejwt.tokens import RefreshToken
+
 
 
 
@@ -414,3 +421,51 @@ class VerificarYCriarCuotas(APIView):
                 resultados.append(f"El cronograma {cronograma.id_cpagos} no tiene cuotas")
 
         return Response({"resultados": resultados})
+
+
+@api_view(['POST'])
+def login(request):
+    nombre_usuario = request.data.get('nombre_usuario')
+    password = request.data.get('password')
+
+    # Buscar si existe la persona con ese nombre de usuario
+    try:
+        persona = Persona.objects.get(nombre_usuario=nombre_usuario, usuario=True)
+
+        # Verificar que la persona tiene una contraseña (no olvidó)
+        if persona.password and check_password(password, persona.password):
+            # Crear los tokens de acceso y refresco
+            refresh = RefreshToken.for_user(persona)
+
+            # Devolver el token JWT junto con un mensaje de éxito
+            return Response({
+                'message': 'Login exitoso',
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            }, status=200)
+        else:
+            return Response({'message': 'Credenciales incorrectas o contraseña no definida'}, status=400)
+    except Persona.DoesNotExist:
+        return Response({'message': 'Usuario no encontrado'}, status=404)
+
+
+@api_view(['POST'])
+def reset_password(request):
+    nombre_usuario = request.data.get('nombre_usuario')
+    nueva_password = request.data.get('nueva_password')
+    confirmar_password = request.data.get('confirmar_password')
+
+    if nueva_password != confirmar_password:
+        return Response({'message': 'Las contraseñas no coinciden'}, status=400)
+
+    # Buscar al usuario por su nombre de usuario
+    try:
+        persona = Persona.objects.get(nombre_usuario=nombre_usuario, usuario=True)
+
+        # Actualizar la contraseña
+        persona.password = make_password(nueva_password)
+        persona.save()
+
+        return Response({'message': 'Contraseña actualizada exitosamente'}, status=200)
+    except Persona.DoesNotExist:
+        return Response({'message': 'Usuario no encontrado'}, status=404)

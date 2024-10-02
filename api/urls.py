@@ -26,5 +26,7 @@ urlpatterns=[
     path('lote-autocomplete/', LoteAutocomplete.as_view(), name='lote-autocomplete'),
     path('cpagos-autocomplete/', CpagosAutocomplete.as_view(), name='cpagos-autocomplete'),
     path('verificar-y-crear-cuotas/', VerificarYCriarCuotas.as_view(), name='verificar_y_crear_cuotas'),
+    path('login/', views.login, name='login'),  # Endpoint para el login
+    path('reset-password/', views.reset_password, name='reset_password') # Endpoint para resetear la contraseña
 ]
 

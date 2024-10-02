@@ -112,6 +112,7 @@ class Persona(models.Model):
     tipo_documento = models.CharField(max_length=255, null=True, blank=True)
     num_documento = models.CharField(max_length=255, null=True, blank=True)
     password = models.CharField(max_length=255, null=True, blank=True)  # Campo para la contraseña
+    nombre_usuario = models.CharField(max_length=255, null=True, blank=True)
 
     def clean(self):
         # Validación personalizada: si usuario es True, password no puede estar vacío
@@ -201,7 +202,7 @@ class Cuota(models.Model):
         # Validación para asegurar que monto_pago_adelantado solo se llena si pago_adelantado es True
         if not self.pago_adelantado and self.monto_pago_adelantado:
             raise ValidationError("No se puede llenar monto_pago_adelantado si pago_adelantado es False.")
-    
+
 
 
 # Fin del modelo Cuota
