@@ -150,6 +150,7 @@ class PersonaClient(models.Model):
     tipo_documento = models.CharField(max_length=255, null=True, blank=True)
     num_documento = models.CharField(max_length=255, null=True, blank=True)
     conyuge = models.BooleanField(default=False)  # Por defecto 'No'
+    telefono_fijo = models.CharField(max_length=20, null=True, blank=True)
 
     def clean(self):
         # Validación personalizada: si usuario es True, password no puede estar vacío
@@ -177,7 +178,7 @@ class Observaciones(models.Model):
     id_observaciones = models.AutoField(primary_key=True)
     descripcion_observaciones = models.CharField(max_length=255)
     adjuntar_informacion = models.CharField(max_length=255)
-    id_persona = models.ForeignKey(
+    id_persona_client = models.ForeignKey(
         PersonaClient, on_delete=models.CASCADE, null=True)
 
     def __str__(self):
@@ -258,10 +259,15 @@ class Cuota(models.Model):
 class FichaDatosCliente(models.Model):
     id_fichadc= models.AutoField(primary_key=True)
     estado_legal = models.CharField(null=True, blank=True)
-    id_lote = models.ForeignKey(
-        Lote, on_delete=models.CASCADE, null=True, blank=True)
+    fecha_cierre = models.DateField(null=True, blank=True)
+    fecha_separacion = models.DateField(null=True, blank=True)
+    cod_boleta = models.CharField(null=True, blank=True)
+    asesor = models.CharField(null=True, blank=True)
+
     id_cpagos = models.ForeignKey(
         CronogramaPagos, on_delete=models.CASCADE, null=True, blank=True)
+    id_lote = models.ForeignKey(
+        Lote, on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
         return f"Cronograma {self.id_cpagos} - Lote {self.id_lote}"
