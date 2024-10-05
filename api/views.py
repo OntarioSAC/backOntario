@@ -2,35 +2,45 @@ from dal import autocomplete
 from datetime import datetime, date
 from rest_framework.response import Response
 from rest_framework import viewsets, status
-from .serializer import CronogramaPagosSerializer, CuotaInicialFraccionadaSerializer, CuotaSerializer, LoteSerializer, ObservacionesSerializer, FichaDatosClienteSerializer, ProyectoSerializer, PersonaSerializer
-from .models import CronogramaPagos, Cuota, CuotaInicialFraccionada, Lote, Observaciones, Persona, FichaDatosCliente, Proyecto
+from .serializer import CronogramaPagosSerializer, CuotaInicialFraccionadaSerializer, CuotaSerializer, DetallePersonaSerializer, EmpresaSerializer, LoteSerializer, ObservacionesSerializer, FichaDatosClienteSerializer, PersonaClientSerializer, PersonaStaffSerializer, ProyectoSerializer
+from .models import CronogramaPagos, Cuota, CuotaInicialFraccionada, DetallePersona, Empresa, Lote, Observaciones, FichaDatosCliente, PersonaClient, PersonaStaff, Proyecto
 from rest_framework.views import APIView
 from django.db import connection
 from datetime import timedelta, date
 from django.db.models import Q
-import requests
 from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist
 
-from django.http import JsonResponse
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.hashers import make_password
-from rest_framework_simplejwt.tokens import RefreshToken
+
+from django.contrib.auth import authenticate
+from rest_framework.authtoken.models import Token
+
+from django.contrib.auth.models import User
+from django.core.mail import send_mail
+from django.utils.crypto import get_random_string
+from django.urls import reverse
+from .models import PasswordResetToken
 
 
 
 
-from rest_framework.permissions import IsAuthenticated
+
+
+import jwt
+
+
+
 
 
 # -----------------Pruebas
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-
-from api import serializer
-
-
 # -------------------------------
+
+import hashlib
+
+
 
 # View del modelo Proyecto
 class ProyectoViewSet(viewsets.ModelViewSet):
@@ -38,17 +48,17 @@ class ProyectoViewSet(viewsets.ModelViewSet):
     queryset = Proyecto.objects.all()
     serializer_class = ProyectoSerializer
 
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
 
 
-# View del modelo Persona
-class PersonaViewSet(viewsets.ModelViewSet):
-    queryset = Persona.objects.all()
-    serializer_class = PersonaSerializer
+# View del modelo PersonaClient
+class PersonaClientViewSet(viewsets.ModelViewSet):
+    queryset = PersonaClient.objects.all()
+    serializer_class = PersonaClientSerializer
 
 
-# View del modelo Persona
+# View del modelo CuotaInicialFraccionada
 class CuotaInicialFraccionadaViewSet(viewsets.ModelViewSet):
     queryset = CuotaInicialFraccionada.objects.all()
     serializer_class = CuotaInicialFraccionadaSerializer
@@ -63,10 +73,26 @@ def getData(request):
     # Prepara la respuesta incluyendo los campos solicitados
     data = []
     for ficha in fichas:
-        persona = ficha.id_persona  # Acceder al objeto Persona
         lote = ficha.id_lote        # Acceder al objeto Lote
         cpagos = ficha.id_cpagos    # Acceder al objeto CronogramaPagos
         proyecto = lote.id_proyecto # Acceder al proyecto asociado al lote
+
+        # Obtener todas las personas relacionadas a través de DetallePersona
+        detalles_persona = DetallePersona.objects.filter(id_fichadc=ficha.id_fichadc)
+
+        personas_data = []
+        for detalle in detalles_persona:
+            persona = detalle.id_persona_client  # Acceder al objeto PersonaClient
+            # Prepara los datos de cada persona relacionada
+            personas_data.append({
+                'nombres': persona.nombres,
+                'apellidos': persona.apellidos,
+                'tipo_documento': persona.tipo_documento,
+                'num_documento': persona.num_documento,
+                'tipo_cliente': detalle.tipo_cliente,
+                'canal': detalle.canal,
+                'medio': detalle.medio,
+            })
 
         # Inicializa morosidad general
         morosidad_general = False
@@ -102,14 +128,11 @@ def getData(request):
         # Prepara la estructura de la respuesta
         ficha_data = {
             'id_fichadc': ficha.id_fichadc,  # ID de la ficha
-            'nombres': persona.nombres,
-            'apellidos': persona.apellidos,
-            'tipo_documento': persona.tipo_documento,
-            'num_documento': persona.num_documento,
             'proyecto': proyecto.nombre_proyecto,  # Nombre del proyecto
             'lote': lote.manzana_lote,  # Lote asociado
             'morosidad': morosidad_general,  # Morosidad (True/False)
-            'dias_morosidad': dias_morosidad_total  # Días de morosidad calculados en todas las cuotas morosas
+            'dias_morosidad': dias_morosidad_total,  # Días de morosidad calculados en todas las cuotas morosas
+            'personas': personas_data  # Lista de personas relacionadas con el lote
         }
         data.append(ficha_data)
 
@@ -340,9 +363,9 @@ class PersonaAutocomplete(autocomplete.Select2QuerySetView):
     def get_queryset(self):
         # Si el usuario no está autenticado, no devolver ningún resultado.
         if not self.request.user.is_authenticated:
-            return Persona.objects.none()
+            return PersonaClient.objects.none()
 
-        qs = Persona.objects.all()
+        qs = PersonaClient.objects.all()
 
         if self.q:
             # Buscar por nombres o num_documento
@@ -423,49 +446,159 @@ class VerificarYCriarCuotas(APIView):
         return Response({"resultados": resultados})
 
 
+# Función para generar tokens JWT manualmente
+def create_jwt_token(persona):
+    payload = {
+        'id_persona': persona.id_persona,
+        'exp': datetime.utcnow() + timedelta(hours=24),  # Token expira en 24 horas
+        'iat': datetime.utcnow()
+    }
+    token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
+    return token
+
+
+
+
 @api_view(['POST'])
 def login(request):
-    nombre_usuario = request.data.get('nombre_usuario')
+    # Obtener el nombre de usuario y la contraseña del request
+    username = request.data.get('username')
     password = request.data.get('password')
+    
+    # Autenticar al usuario
+    user = authenticate(username=username, password=password)
+    
+    if user is not None:
+        try:
+            # Obtener los datos del PersonaStaff asociado al usuario
+            persona_staff = PersonaStaff.objects.get(user=user)
+            
+            # Verificar si el PersonaStaff está asociado a una empresa
+            empresa = persona_staff.id_empresa if persona_staff.id_empresa else None
 
-    # Buscar si existe la persona con ese nombre de usuario
-    try:
-        persona = Persona.objects.get(nombre_usuario=nombre_usuario, usuario=True)
-
-        # Verificar que la persona tiene una contraseña (no olvidó)
-        if persona.password and check_password(password, persona.password):
-            # Crear los tokens de acceso y refresco
-            refresh = RefreshToken.for_user(persona)
-
-            # Devolver el token JWT junto con un mensaje de éxito
+            # Crear o obtener el token del usuario
+            token, created = Token.objects.get_or_create(user=user)
+            
+            # Retornar los datos del usuario junto con los detalles de PersonaStaff y el token
             return Response({
-                'message': 'Login exitoso',
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-            }, status=200)
-        else:
-            return Response({'message': 'Credenciales incorrectas o contraseña no definida'}, status=400)
-    except Persona.DoesNotExist:
-        return Response({'message': 'Usuario no encontrado'}, status=404)
+                'token': token.key,
+                'user_id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'persona_staff': {
+                    'nombres': persona_staff.nombres,
+                    'apellidos': persona_staff.apellidos,
+                    'correo': persona_staff.correo,
+                    'celular': persona_staff.celular,
+                    'rol': persona_staff.rol,
+                    'area': persona_staff.area,
+                    'dni': persona_staff.dni,
+                    'empresa': {
+                        'nombre_empresa': empresa.nombre_empresa,
+                        'ruc': empresa.ruc
+                    } if empresa else None
+                }
+                
+            }, status=status.HTTP_200_OK)
+        
+        except PersonaStaff.DoesNotExist:
+            return Response({'error': 'PersonaStaff no asociado a este usuario'}, status=status.HTTP_404_NOT_FOUND)
+    
+    else:
+        return Response({'error': 'Credenciales inválidas'}, status=status.HTTP_401_UNAUTHORIZED)
+    
+
+# View del modelo DetallePersona
+class DetallePersonaViewSet(viewsets.ModelViewSet):
+
+    queryset = DetallePersona.objects.all()
+    serializer_class = DetallePersonaSerializer
+
+
+# View del modelo Empresa
+class EmpresaViewSet(viewsets.ModelViewSet):
+
+    queryset = Empresa.objects.all()
+    serializer_class = EmpresaSerializer
+
+
+# View del modelo PersonaStaff
+class PersonaStaffViewSet(viewsets.ModelViewSet):
+
+    queryset = PersonaStaff.objects.all()
+    serializer_class = PersonaStaffSerializer
+
+
 
 
 @api_view(['POST'])
-def reset_password(request):
-    nombre_usuario = request.data.get('nombre_usuario')
-    nueva_password = request.data.get('nueva_password')
-    confirmar_password = request.data.get('confirmar_password')
+def request_password_reset(request):
+    email = request.data.get('email')
 
-    if nueva_password != confirmar_password:
-        return Response({'message': 'Las contraseñas no coinciden'}, status=400)
-
-    # Buscar al usuario por su nombre de usuario
     try:
-        persona = Persona.objects.get(nombre_usuario=nombre_usuario, usuario=True)
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({'error': 'Usuario con este correo no existe.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Actualizar la contraseña
-        persona.password = make_password(nueva_password)
-        persona.save()
+    # Generar un token de restablecimiento único
+    token = get_random_string(length=32)
+    
+    # Crear o actualizar el token de restablecimiento
+    PasswordResetToken.objects.update_or_create(user=user, defaults={'token': token})
 
-        return Response({'message': 'Contraseña actualizada exitosamente'}, status=200)
-    except Persona.DoesNotExist:
-        return Response({'message': 'Usuario no encontrado'}, status=404)
+    # Enviar el correo con el enlace de restablecimiento
+    reset_url = request.build_absolute_uri(reverse('password_reset_confirm', kwargs={'token': token}))
+    send_mail(
+        'Restablecer contraseña',
+        f'Haga clic en el siguiente enlace para restablecer su contraseña: {reset_url}',
+        settings.EMAIL_HOST_USER,
+        [user.email],
+        fail_silently=False,
+    )
+
+    return Response({'message': 'Correo enviado con el enlace de restablecimiento.'}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+def validate_password_reset_token(request, token):
+    try:
+        reset_token = PasswordResetToken.objects.get(token=token)
+
+        # Verificar si el token es válido
+        if not reset_token.is_valid():
+            return Response({'error': 'El token ha expirado.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({'message': 'Token válido. Procede a restablecer la contraseña.'}, status=status.HTTP_200_OK)
+
+    except PasswordResetToken.DoesNotExist:
+        return Response({'error': 'Token inválido.'}, status=status.HTTP_404_NOT_FOUND)
+    
+
+
+@api_view(['POST'])
+def reset_password(request, token):
+    try:
+        reset_token = PasswordResetToken.objects.get(token=token)
+
+        # Verificar si el token es válido
+        if not reset_token.is_valid():
+            return Response({'error': 'El token ha expirado.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        new_password = request.data.get('new_password')
+        confirm_password = request.data.get('confirm_password')
+
+        if new_password != confirm_password:
+            return Response({'error': 'Las contraseñas no coinciden.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Actualizar la contraseña del usuario
+        user = reset_token.user
+        user.password = make_password(new_password)
+        user.save()
+
+        # Eliminar el token después de su uso
+        reset_token.delete()
+
+        return Response({'message': 'Contraseña actualizada correctamente.'}, status=status.HTTP_200_OK)
+
+    except PasswordResetToken.DoesNotExist:
+        return Response({'error': 'Token inválido.'}, status=status.HTTP_404_NOT_FOUND)

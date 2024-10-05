@@ -6,13 +6,16 @@ from .views import PersonaAutocomplete, LoteAutocomplete, CpagosAutocomplete, Ve
 
 router=routers.DefaultRouter()
 router.register(r'proyectos',views.ProyectoViewSet)                                 # Url del modelo Proyecto
-router.register(r'personas',views.PersonaViewSet)                                   # Url del modelo Persona
+router.register(r'personaclient',views.PersonaClientViewSet)                        # Url del modelo PersonaClient
 router.register(r'lotes',views.LoteViewSet)                                         # Url del modelo Lote
 router.register(r'fichadatosclientes',views.FichaDatosClienteViewSet)               # Url del modelo FichaDatosCliente
 router.register(r'cronogramapagos',views.CronogramaPagosViewSet)                    # Url del modelo CronogramaPago
 router.register(r'observaciones',views.ObservacionesViewSet)                        # Url del modelo Observaciones
-router.register(r'cuotas',views.CuotaViewSet)                                      # Url del modelo Cuota
-router.register(r'cuotainicialfraccionada',views.CuotaInicialFraccionadaViewSet)   # Url del modelo CuotaInicialFraccionada
+router.register(r'cuotas',views.CuotaViewSet)                                       # Url del modelo Cuota
+router.register(r'cuotainicialfraccionada',views.CuotaInicialFraccionadaViewSet)    # Url del modelo CuotaInicialFraccionada
+router.register(r'detallepersona',views.DetallePersonaViewSet)                      # Url del modelo DetallePersona
+router.register(r'empresa',views.EmpresaViewSet)                                    # Url del modelo Empresa
+router.register(r'personastaff',views.PersonaStaffViewSet)                          # Url del modelo PersonaStaff
 
 
 urlpatterns=[
@@ -27,6 +30,15 @@ urlpatterns=[
     path('cpagos-autocomplete/', CpagosAutocomplete.as_view(), name='cpagos-autocomplete'),
     path('verificar-y-crear-cuotas/', VerificarYCriarCuotas.as_view(), name='verificar_y_crear_cuotas'),
     path('login/', views.login, name='login'),  # Endpoint para el login
-    path('reset-password/', views.reset_password, name='reset_password') # Endpoint para resetear la contraseña
+
+    # Endpoint para solicitar el restablecimiento de contraseña
+    path('password-reset/request/', views.request_password_reset, name='password_reset_request'),
+
+    # Endpoint para validar el token de restablecimiento de contraseña
+    path('password-reset/validate/<str:token>/', views.validate_password_reset_token, name='password_reset_confirm'),
+
+    # Endpoint para restablecer la contraseña
+    path('password-reset/confirm/<str:token>/', views.reset_password, name='password_reset_complete'),
+
 ]
 

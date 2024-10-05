@@ -1,5 +1,8 @@
 from rest_framework import serializers
-from .models import CronogramaPagos, Cuota, FichaDatosCliente, Lote, Observaciones, Persona, Proyecto
+from .models import CronogramaPagos, Cuota, CuotaInicialFraccionada, DetallePersona, Empresa, FichaDatosCliente, Lote, Observaciones, PersonaClient, PersonaStaff, Proyecto
+from django.contrib.auth.hashers import check_password
+
+
 
 
 class CustomModelSerializer(serializers.ModelSerializer):
@@ -9,19 +12,18 @@ class CustomModelSerializer(serializers.ModelSerializer):
 
 
 
-# Serializer del modelo Persona
-class PersonaSerializer(CustomModelSerializer):
+# Serializer del modelo PersonaClient
+class PersonaClientSerializer(CustomModelSerializer):
     
     class Meta:
-        model = Persona
+        model = PersonaClient
         fields = [
-            'id_persona',
+            'id_persona_client',
             'nombres',
             'apellidos',
             'genero',
             'celular',
             'correo',
-            'conyuge',
             'pais',
             'departamento',
             'provincia',
@@ -29,15 +31,9 @@ class PersonaSerializer(CustomModelSerializer):
             'fecha_creacion',
             'ocupacion',
             'centro_trabajo',
-            'rol',
-            'area',
-            'origen',
-            'canal',
-            'medio',
-            'usuario',
             'tipo_documento',
             'num_documento',
-            'password',
+            'conyuge',
         ]
 
     def validate(self, data):
@@ -51,7 +47,6 @@ class PersonaSerializer(CustomModelSerializer):
                 raise serializers.ValidationError("El campo DNI debe tener exactamente 8 caracteres.")
         
         return data
-
 
 
 
@@ -141,9 +136,9 @@ class CuotaSerializer(CustomModelSerializer):
 
 
 
-# Serializer del modelo FichaDatosCliente
+# Serializer del modelo DatosPersona
 class FichaDatosClienteSerializer(CustomModelSerializer):
-    persona = PersonaSerializer(source='id_persona')
+    # persona = PersonaSerializer(source='id_persona')
     lote = LoteSerializer(source='id_lote')
     cpagos = CronogramaPagosSerializer(source='id_cpagos')
     
@@ -152,7 +147,6 @@ class FichaDatosClienteSerializer(CustomModelSerializer):
         fields = [
             'id_fichadc',
             'estado_legal',
-            'persona',
             'lote',
             'cpagos'
         ]
@@ -162,7 +156,7 @@ class FichaDatosClienteSerializer(CustomModelSerializer):
 
 # Serializer del modelo Observaciones
 class ObservacionesSerializer(serializers.ModelSerializer):
-    id_persona = PersonaSerializer()
+    persona = PersonaClientSerializer(source='id_persona_client')
 
     class Meta:
         model = Observaciones
@@ -170,19 +164,73 @@ class ObservacionesSerializer(serializers.ModelSerializer):
             'id_observaciones',
             'descripcion_observaciones',
             'adjuntar_informacion',
-            'id_persona'
+            'persona'
         ]
 
 
 
 # Serializer del modelo CuotaInicialFraccionada
 class CuotaInicialFraccionadaSerializer(serializers.ModelSerializer):
-    id_cpagos = CronogramaPagosSerializer()
+    cpagos = CronogramaPagosSerializer(source='id_cpagos')
 
     class Meta:
-        model = Observaciones
+        model = CuotaInicialFraccionada
         fields = [
             'id_cuota_inicial',
             'monto_inicial',
-            'id_cpagos'
+            'cpagos'
+        ]
+
+
+# Serializer del modelo DetallePersona
+class DetallePersonaSerializer(serializers.ModelSerializer):
+    persona_client = PersonaClientSerializer(source='id_persona_client')
+    fichadc = FichaDatosClienteSerializer(source='id_datos_persona')
+
+    class Meta:
+        model = DetallePersona
+        fields = [
+            'id_detalle_persona',
+            'tipo_cliente',
+            'usuario',
+            'canal',
+            'medio',
+            'area',
+            'origen',
+            'persona_client',
+            'fichadc'
+        ]
+
+
+# Serializer del modelo Empresa
+class EmpresaSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Empresa
+        fields = [
+            'id_persona',
+            'nombre_empresa',
+            'ruc'
+        ]
+
+
+# Serializer del modelo PersonaStaff
+class PersonaStaffSerializer(CustomModelSerializer):
+    empresa = EmpresaSerializer(source='id_empresa')
+
+
+    class Meta:
+        model = PersonaStaff
+        fields = [
+            'id_persona_staff',
+            'nombres',
+            'apellidos',
+            'area',
+            'dni',
+            'conyuge',
+            'correo',
+            'celular',
+            'fecha_inicio',
+            'fecha_fin',
+            'empresa'
         ]

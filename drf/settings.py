@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'dal',
     'dal_select2',
     'rest_framework_simplejwt.token_blacklist', 
+    'rest_framework.authtoken',
 ]
 
 MIDDLEWARE = [
@@ -151,6 +152,9 @@ REST_FRAMEWORK = {
     'DATETIME_FORMAT': "%d/%m/%Y",
     'DATE_FORMAT': "%d/%m/%Y",
     'DATE_INPUT_FORMATS': ["%d/%m/%Y", 'iso-8601'],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ],
 }
 
 DATE_INPUT_FORMATS = [
@@ -223,11 +227,29 @@ REST_FRAMEWORK.update({
 })
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),  # Token de acceso expira en 5 minutos
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),    # Token de refresco expira en 1 día
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
-    'ALGORITHM': 'HS256',  # Algoritmo de encriptación
+    'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
     'AUTH_HEADER_TYPES': ('Bearer',),
+    'USER_ID_FIELD': 'id_persona',  # Usar el campo id_persona de Persona
+    'USER_ID_CLAIM': 'user_id',  # El nombre del claim en el token
 }
+
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+# Datos del servidor SMTP (Zoho, según tu imagen anterior)
+EMAIL_HOST = 'smtp.zoho.com'
+EMAIL_PORT = 465  # Usa el puerto 465 si usas SSL, o 587 si prefieres TLS
+EMAIL_USE_TLS = False  # False porque usaremos SSL
+EMAIL_USE_SSL = True  # True porque usaremos SSL
+
+# Credenciales de la cuenta de correo general
+EMAIL_HOST_USER = 'dala@ontario.com.pe'  # Tu cuenta de correo general
+EMAIL_HOST_PASSWORD = 'Ontariomain000'  # La contraseña de la cuenta de correo general
+
+# Otros ajustes opcionales (si los necesitas)
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER  # Esta es la dirección desde la que se envían los correos por defecto

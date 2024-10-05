@@ -3,12 +3,56 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from datetime import timedelta
 from datetime import date
-
-
+from django.contrib.auth.hashers import make_password
+from django.contrib.auth.models import User
 
 
 # Aquí se crean los modelos de la aplicación.
 # Un modelo en Django es una clase que define la estructura de una tabla en la base de datos.
+
+
+
+
+# Inicio del modelo Empresa
+
+class Empresa(models.Model):
+    id_empresa = models.AutoField(primary_key=True)
+    nombre_empresa = models.CharField(max_length=100)
+    ruc = models.CharField(null=True, blank=True)
+    
+    def __str__(self):
+        return self.nombre_empresa
+
+# Fin del modelo Empresa
+# ===========================================
+
+
+
+
+# Inicio del modelo PersonaStaff
+
+class PersonaStaff(models.Model):
+    id_persona_staff = models.AutoField(primary_key=True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
+    nombres = models.CharField(max_length=255, null=True, blank=True)
+    apellidos = models.CharField(max_length=255, null=True, blank=True)
+    area = models.CharField(max_length=255, null=True, blank=True)
+    dni = models.CharField(max_length=8, null=True, blank=True)
+    conyuge = models.BooleanField(default=False)  # Por defecto 'No'
+    correo = models.EmailField(max_length=100, null=True, blank=True)
+    celular = models.CharField(max_length=9, null=True, blank=True)
+    fecha_inicio = models.DateField(default=timezone.now)  # Fecha por defecto: hoy
+    fecha_fin = models.DateField(null=True, blank=True)
+    rol = models.CharField(null=True, blank=True)
+
+    id_empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, null=True, blank=True)
+
+    def __str__(self):
+        return self.nombres
+
+# Fin del modelo PersonaStaff
+# ===========================================
+
 
 
 
@@ -18,6 +62,7 @@ class Proyecto(models.Model):
     id_proyecto = models.AutoField(primary_key=True)
     nombre_proyecto = models.CharField(max_length=100)
     fecha_inicio = models.DateField(null=True, blank=True)
+    id_empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, null=True, blank=True)
     
     def save(self, *args, **kwargs):
         if not self.id_proyecto:  # Solo si no hay un ID asignado
@@ -86,16 +131,15 @@ class Lote(models.Model):
 # ===========================================
 
 
-# Inicio del modelo Persona
+# Inicio del modelo PersonaClient
 
-class Persona(models.Model):
-    id_persona = models.AutoField(primary_key=True)
+class PersonaClient(models.Model):
+    id_persona_client = models.AutoField(primary_key=True)
     nombres = models.CharField(max_length=255, null=True, blank=True)
     apellidos = models.CharField(max_length=255, null=True, blank=True)
     genero = models.CharField(max_length=255, null=True, blank=True)
     celular = models.CharField(max_length=9, null=True, blank=True)
     correo = models.EmailField(max_length=100, null=True, blank=True)
-    conyuge = models.BooleanField(default=False)  # Por defecto 'No'
     pais = models.CharField(max_length=255, default="PERU")
     departamento = models.CharField(max_length=255, null=True, blank=True)
     provincia = models.CharField(max_length=255, null=True, blank=True)
@@ -103,16 +147,9 @@ class Persona(models.Model):
     fecha_creacion = models.DateField(default=timezone.now)  # Fecha por defecto: hoy
     ocupacion = models.CharField(max_length=100, null=True, blank=True)
     centro_trabajo = models.CharField(max_length=255, null=True, blank=True)
-    rol = models.CharField(max_length=255, null=True, blank=True)
-    area = models.CharField(max_length=255, null=True, blank=True)
-    origen = models.CharField(max_length=255, null=True, blank=True)
-    canal = models.CharField(max_length=255, null=True, blank=True)
-    medio = models.CharField(max_length=255, null=True, blank=True)
-    usuario = models.BooleanField(default=False)  # Booleano para indicar si es usuario
     tipo_documento = models.CharField(max_length=255, null=True, blank=True)
     num_documento = models.CharField(max_length=255, null=True, blank=True)
-    password = models.CharField(max_length=255, null=True, blank=True)  # Campo para la contraseña
-    nombre_usuario = models.CharField(max_length=255, null=True, blank=True)
+    conyuge = models.BooleanField(default=False)  # Por defecto 'No'
 
     def clean(self):
         # Validación personalizada: si usuario es True, password no puede estar vacío
@@ -121,9 +158,16 @@ class Persona(models.Model):
     
     def __str__(self):
         return f"{self.nombres} - {self.num_documento}"
+    
+    # def save(self, *args, **kwargs):
+    #     # Encriptar la contraseña si no está ya encriptada
+    #     if self.password and not self.password.startswith('pbkdf2_sha256$'):
+    #         self.password = make_password(self.password)
+    #     super().save(*args, **kwargs)
 
-# Fin del modelo Persona
+# Fin del modelo PersonaClient
 # ===========================================
+
 
 
 
@@ -134,7 +178,7 @@ class Observaciones(models.Model):
     descripcion_observaciones = models.CharField(max_length=255)
     adjuntar_informacion = models.CharField(max_length=255)
     id_persona = models.ForeignKey(
-        Persona, on_delete=models.CASCADE, null=True)
+        PersonaClient, on_delete=models.CASCADE, null=True)
 
     def __str__(self):
         return self.descripcion_observaciones
@@ -180,6 +224,7 @@ class CronogramaPagos(models.Model):
 
 
 
+
 # Inicio del modelo Cuota
 
 class Cuota(models.Model):
@@ -194,7 +239,6 @@ class Cuota(models.Model):
         CronogramaPagos, on_delete=models.CASCADE, null=True)
     tipo_moneda = models.CharField(default="SOLES",null=True, blank=True)
 
-
     def __str__(self):
         return f"Cuota {self.id_cuota}"
     
@@ -203,28 +247,54 @@ class Cuota(models.Model):
         if not self.pago_adelantado and self.monto_pago_adelantado:
             raise ValidationError("No se puede llenar monto_pago_adelantado si pago_adelantado es False.")
 
-
-
 # Fin del modelo Cuota
 # ===========================================
+
+
 
 
 # Inicio del modelo FichaDatosCliente
 
 class FichaDatosCliente(models.Model):
-    id_fichadc = models.AutoField(primary_key=True)
+    id_fichadc= models.AutoField(primary_key=True)
     estado_legal = models.CharField(null=True, blank=True)
-    id_persona = models.ForeignKey(Persona, on_delete=models.CASCADE, null=True, blank=True)
     id_lote = models.ForeignKey(
         Lote, on_delete=models.CASCADE, null=True, blank=True)
     id_cpagos = models.ForeignKey(
         CronogramaPagos, on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
-        return f"Persona {self.id_persona} - Cronograma {self.id_cpagos} - Lote {self.id_lote}"
+        return f"Cronograma {self.id_cpagos} - Lote {self.id_lote}"
 
 # Fin del modelo FichaDatosCliente
 # ===========================================
+
+
+
+
+# Inicio del modelo DetallePersona
+
+class DetallePersona(models.Model):
+    id_detalle_persona = models.AutoField(primary_key=True)
+    tipo_cliente = models.CharField(max_length=255, null=True, blank=True)
+    usuario = models.BooleanField(default=False)  # Booleano para indicar si es usuario
+    canal = models.CharField(max_length=255, null=True, blank=True)
+    medio = models.CharField(max_length=255, null=True, blank=True)
+    area = models.CharField(max_length=255, null=True, blank=True)
+    origen = models.CharField(max_length=255, null=True, blank=True)
+    id_persona_client = models.ForeignKey(
+        PersonaClient, on_delete=models.CASCADE, null=True, blank=True)
+    id_fichadc = models.ForeignKey(
+        FichaDatosCliente, on_delete=models.CASCADE, null=True, blank=True)
+
+    def __str__(self):
+        return f"Detalle Persona {self.id_detalle_persona}"
+
+
+# Fin del modelo DetallePersona
+# ===========================================
+
+
 
 
 # Inicio del modelo CuotaInicialFraccionada
@@ -239,3 +309,14 @@ class CuotaInicialFraccionada(models.Model):
 
 # Fin del modelo FichaDatosCliente
 # ===========================================
+
+
+# Inicio del modelo PasswordResetToken
+
+class PasswordResetToken(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    token = models.CharField(max_length=32)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def is_valid(self):
+        return timezone.now() - self.created_at < timedelta(hours=24)
