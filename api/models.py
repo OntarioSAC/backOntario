@@ -184,7 +184,7 @@ class Observaciones(models.Model):
     def __str__(self):
         return self.descripcion_observaciones
 
-# Fin del modelo Observaciones
+# Fin del modelo O  bservaciones
 # ===========================================
 
 

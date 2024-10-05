@@ -547,7 +547,8 @@ def request_password_reset(request):
     PasswordResetToken.objects.update_or_create(user=user, defaults={'token': token})
 
     # Enviar el correo con el enlace de restablecimiento
-    reset_url = f'http://192.168.0.104:3000/reset-password?token={token}'
+    reset_url = f'http://192.168.0.104:3000/reset-password/{token}'
+    print(f"Reset URL: {reset_url}")  # Añade esta línea para verificar
     send_mail(
         'Restablecer contraseña',
         f'Haga clic en el siguiente enlace para restablecer su contraseña: {reset_url}',
