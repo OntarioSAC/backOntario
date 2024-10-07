@@ -248,8 +248,8 @@ EMAIL_USE_TLS = False  # False porque usaremos SSL
 EMAIL_USE_SSL = True  # True porque usaremos SSL
 
 # Credenciales de la cuenta de correo general
-EMAIL_HOST_USER = 'dala@ontario.com.pe'  # Tu cuenta de correo general
-EMAIL_HOST_PASSWORD = 'Ontariomain000'  # La contraseña de la cuenta de correo general
+EMAIL_HOST_USER = 'soporte@inmobiliariaontario.com'  # Tu cuenta de correo general
+EMAIL_HOST_PASSWORD = '123$Rodrigo$123'  # La contraseña de la cuenta de correo general
 
 # Otros ajustes opcionales (si los necesitas)
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER  # Esta es la dirección desde la que se envían los correos por defecto
