@@ -466,7 +466,7 @@ def login(request):
     password = request.data.get('password')
     
     # Autenticar al usuario
-    user = authenticate(username=username, password=password)
+    user = authenticate(request, username=username, password=password)
     
     if user is not None:
         try:
@@ -547,7 +547,7 @@ def request_password_reset(request):
     PasswordResetToken.objects.update_or_create(user=user, defaults={'token': token})
 
     # Enviar el correo con el enlace de restablecimiento
-    reset_url = f'http://192.168.0.104:3000/reset-password/{token}'
+    reset_url = f'http://localhost:3000/reset-password/{token}'
     print(f"Reset URL: {reset_url}")  # Añade esta línea para verificar
     send_mail(
         'Restablecer contraseña',
@@ -591,9 +591,9 @@ def reset_password(request, token):
         if new_password != confirm_password:
             return Response({'error': 'Las contraseñas no coinciden.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Actualizar la contraseña del usuario
+        # Actualizar la contraseña del usuario utilizando set_password
         user = reset_token.user
-        user.password = make_password(new_password)
+        user.set_password(new_password)
         user.save()
 
         # Eliminar el token después de su uso
