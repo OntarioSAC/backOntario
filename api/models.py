@@ -23,6 +23,9 @@ class Empresa(models.Model):
     def __str__(self):
         return self.nombre_empresa
 
+    def delete(self, *args, **kwargs):
+        raise ValidationError("La eliminación de registros no está permitida.")
+
 # Fin del modelo Empresa
 # ===========================================
 
@@ -49,6 +52,9 @@ class PersonaStaff(models.Model):
 
     def __str__(self):
         return self.nombres
+    
+    def delete(self, *args, **kwargs):
+        raise ValidationError("La eliminación de registros no está permitida.")
 
 # Fin del modelo PersonaStaff
 # ===========================================
@@ -81,6 +87,9 @@ class Proyecto(models.Model):
 
     def __str__(self):
         return self.nombre_proyecto
+    
+    def delete(self, *args, **kwargs):
+        raise ValidationError("La eliminación de registros no está permitida.")
 
 # Fin del modelo Proyecto
 # ===========================================
@@ -125,6 +134,9 @@ class Lote(models.Model):
 
     def __str__(self):
         return f"Lote {self.manzana_lote} - Proyecto {self.id_proyecto.nombre_proyecto}"
+    
+    def delete(self, *args, **kwargs):
+        raise ValidationError("La eliminación de registros no está permitida.")
 
 
 # Fin del modelo Lote
@@ -167,6 +179,9 @@ class PersonaClient(models.Model):
     #         self.password = make_password(self.password)
     #     super().save(*args, **kwargs)
 
+    def delete(self, *args, **kwargs):
+        raise ValidationError("La eliminación de registros no está permitida.")
+
 # Fin del modelo PersonaClient
 # ===========================================
 
@@ -184,6 +199,9 @@ class Observaciones(models.Model):
 
     def __str__(self):
         return self.descripcion_observaciones
+    
+    def delete(self, *args, **kwargs):
+        raise ValidationError("La eliminación de registros no está permitida.")
 
 # Fin del modelo O  bservaciones
 # ===========================================
@@ -219,6 +237,9 @@ class CronogramaPagos(models.Model):
 
     def __str__(self):
         return f"CronogramaPagos {self.id_cpagos}"
+    
+    def delete(self, *args, **kwargs):
+        raise ValidationError("La eliminación de registros no está permitida.")
 
 
 # Fin del modelo CronogramaPagos
@@ -249,6 +270,9 @@ class Cuota(models.Model):
         if not self.pago_adelantado and self.monto_pago_adelantado:
             raise ValidationError("No se puede llenar monto_pago_adelantado si pago_adelantado es False.")
 
+    def delete(self, *args, **kwargs):
+        raise ValidationError("La eliminación de registros no está permitida.")
+
 # Fin del modelo Cuota
 # ===========================================
 
@@ -272,6 +296,9 @@ class FichaDatosCliente(models.Model):
 
     def __str__(self):
         return f"Cronograma {self.id_cpagos} - Lote {self.id_lote}"
+    
+    def delete(self, *args, **kwargs):
+        raise ValidationError("La eliminación de registros no está permitida.")
 
 # Fin del modelo FichaDatosCliente
 # ===========================================
@@ -296,6 +323,9 @@ class DetallePersona(models.Model):
 
     def __str__(self):
         return f"Detalle Persona {self.id_detalle_persona}"
+    
+    def delete(self, *args, **kwargs):
+        raise ValidationError("La eliminación de registros no está permitida.")
 
 
 # Fin del modelo DetallePersona
@@ -314,6 +344,10 @@ class CuotaInicialFraccionada(models.Model):
     def __str__(self):
         return f"Cuota Inicial {self.id_cuota_inicial} - Cronograma {self.id_cpagos.id_cpagos}"
 
+    def delete(self, *args, **kwargs):
+        raise ValidationError("La eliminación de registros no está permitida.")
+
+
 # Fin del modelo CuotaInicialFraccionada
 # ===========================================
 
@@ -327,3 +361,6 @@ class PasswordResetToken(models.Model):
 
     def is_valid(self):
         return timezone.now() - self.created_at < timedelta(hours=24)
+    
+    def delete(self, *args, **kwargs):
+        raise ValidationError("La eliminación de registros no está permitida.")

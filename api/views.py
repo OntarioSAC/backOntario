@@ -533,15 +533,14 @@ def request_password_reset(request):
     except User.DoesNotExist:
         return Response({'error': 'Usuario con este correo no existe.'}, status=status.HTTP_404_NOT_FOUND)
 
-    # Generar un token de restablecimiento único
+    # Generar un nuevo token de restablecimiento único
     token = get_random_string(length=32)
     
     # Crear o actualizar el token de restablecimiento
     PasswordResetToken.objects.update_or_create(user=user, defaults={'token': token})
 
-    # Enviar el correo con el enlace de restablecimiento
+    # Enviar el correo con el nuevo enlace de restablecimiento
     reset_url = f'http://localhost:3000/reset-password/{token}'
-    print(f"Reset URL: {reset_url}")  # Añade esta línea para verificar
     send_mail(
         'Restablecer contraseña',
         f'Haga clic en el siguiente enlace para restablecer su contraseña: {reset_url}',
@@ -560,12 +559,12 @@ def validate_password_reset_token(request, token):
 
         # Verificar si el token es válido
         if not reset_token.is_valid():
-            return Response({'error': 'El token ha expirado.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'El token ha expirado. Solicita un nuevo enlace de restablecimiento.'}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({'message': 'Token válido. Procede a restablecer la contraseña.'}, status=status.HTTP_200_OK)
 
     except PasswordResetToken.DoesNotExist:
-        return Response({'error': 'Token inválido.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'error': 'Token inválido. Solicita un nuevo enlace de restablecimiento.'}, status=status.HTTP_404_NOT_FOUND)
     
 
 
@@ -630,23 +629,29 @@ def post_lote_libre(request):
     except Lote.DoesNotExist:
         return Response({'error': 'El lote seleccionado no está disponible o no existe.'}, status=status.HTTP_404_NOT_FOUND)
 
-    # Obtener los campos del cliente
+    # Obtener los campos del cliente y cónyuge con los nombres correctos según el modelo
     nombres = data.get('nombres')
     apellidos = data.get('apellidos')
-    tipo_de_documento = data.get('tipo_de_documento')
-    numero_de_documento = data.get('numero_de_documento')
+    tipo_documento = data.get('tipo_documento')
+    num_documento = data.get('num_documento')
     direccion = data.get('direccion')
-    email = data.get('email')
+    email = data.get('correo')
     telefono_fijo = data.get('telefono_fijo')
     celular = data.get('celular')
-    inicial_de_separacion = data.get('inicial_de_separacion')
-    tipo_de_moneda = data.get('tipo_de_moneda')
-    tiene_conyuge = data.get('tiene_conyuge')
-    tipo_de_cliente = data.get('tipo_de_cliente')
+    inicial_separacion = data.get('inicial_separacion')
+    tipo_moneda = data.get('tipo_moneda')
+    tiene_conyuge = data.get('conyuge')
+    nombre_conyuge = data.get('nombre_conyuge')
+    dni_conyuge = data.get('dni_conyuge')
+    tipo_cliente = data.get('tipo_cliente')
+    cod_boleta = data.get('cod_boleta')  # Se espera que este campo se proporcione desde el endpoint generate_boleta_code
+
+    # Validar que el código de boleta esté presente
+    if not cod_boleta:
+        return Response({'error': 'No se proporcionó el código de boleta.'}, status=status.HTTP_400_BAD_REQUEST)
 
     # Validar los datos requeridos del cliente principal
-    campos_requeridos = ['nombres', 'apellidos', 'tipo_de_documento', 'numero_de_documento', 'direccion', 'email', 'celular', 'inicial_de_separacion', 'tipo_de_moneda', 'tipo_de_cliente']
-
+    campos_requeridos = ['nombres', 'apellidos', 'tipo_documento', 'num_documento', 'direccion', 'correo', 'celular', 'inicial_separacion', 'tipo_moneda', 'tipo_cliente', 'cod_boleta']
     campos_faltantes = [campo for campo in campos_requeridos if not data.get(campo)]
 
     if campos_faltantes:
@@ -654,7 +659,7 @@ def post_lote_libre(request):
 
     # Marcar el lote como reservado
     try:
-        lote_libre.estado = 'RESERVADO'
+        lote_libre.estado = 'SEPARADO'
         lote_libre.save()
     except Exception as e:
         return Response({'error': f'Error al reservar el lote: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -669,29 +674,41 @@ def post_lote_libre(request):
             correo=email,
             celular=celular,
             telefono_fijo=telefono_fijo,
-            tipo_documento=tipo_de_documento,
-            num_documento=numero_de_documento,
+            tipo_documento=tipo_documento,
+            num_documento=num_documento,
             conyuge=conyuge_bool,
             direccion=direccion,
         )
+
+        # Si hay cónyuge, guardar la información del cónyuge
+        if conyuge_bool:
+            PersonaClient.objects.create(
+                nombres=nombre_conyuge,
+                apellidos="",
+                tipo_documento="DNI",
+                num_documento=dni_conyuge,
+                conyuge=False,
+                direccion=direccion,
+            )
     except Exception as e:
-        return Response({'error': f'Error al crear el cliente: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({'error': f'Error al crear el cliente o cónyuge: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # Crear una instancia de CronogramaPagos
     try:
         cronograma_pagos = CronogramaPagos.objects.create(
-            inicial_separacion=inicial_de_separacion,
-            tipo_moneda=tipo_de_moneda,
+            inicial_separacion=inicial_separacion,
+            tipo_moneda=tipo_moneda,
         )
     except Exception as e:
         return Response({'error': f'Error al crear el cronograma de pagos: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    # Crear una instancia de FichaDatosCliente
+    # Crear una instancia de FichaDatosCliente con el código generado
     try:
         ficha_datos_cliente = FichaDatosCliente.objects.create(
             fecha_separacion=timezone.now(),
             id_cpagos=cronograma_pagos,
             id_lote=lote_libre,
+            cod_boleta=cod_boleta  # Asignar el código generado desde el otro endpoint
         )
     except Exception as e:
         return Response({'error': f'Error al crear la ficha de datos del cliente: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -699,14 +716,14 @@ def post_lote_libre(request):
     # Crear una instancia de DetallePersona
     try:
         detalle_persona = DetallePersona.objects.create(
-            tipo_cliente=tipo_de_cliente,
+            tipo_cliente=tipo_cliente,
             id_persona_client=persona_client,
             id_fichadc=ficha_datos_cliente,
         )
     except Exception as e:
         return Response({'error': f'Error al crear el detalle de persona: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    return Response({'mensaje': 'Lote reservado y datos del cliente registrados correctamente'}, status=status.HTTP_201_CREATED)
+    return Response({'mensaje': 'Lote reservado y datos del cliente registrados correctamente', 'cod_boleta': cod_boleta}, status=status.HTTP_201_CREATED)
 
 
 @api_view(['POST'])
@@ -721,21 +738,25 @@ def post_lote_conyuge(request):
     tipo_documento = data.get('tipo_documento')
     num_documento = data.get('num_documento')
     direccion = data.get('direccion')
-    email = data.get('email')
+    email = data.get('correo')
     telefono_fijo = data.get('telefono_fijo')
     celular = data.get('celular')
     inicial_separacion = data.get('inicial_separacion')
     tipo_moneda = data.get('tipo_moneda')
     conyuge = data.get('conyuge')  # Debería ser un booleano
     tipo_cliente = data.get('tipo_cliente')
+    cod_boleta = data.get('cod_boleta')  # Código de boleta generado desde otro endpoint
+
+    # Validar que el código de boleta esté presente
+    if not cod_boleta:
+        return Response({'error': 'No se proporcionó el código de boleta.'}, status=status.HTTP_400_BAD_REQUEST)
 
     # Validar que 'conyuge' sea True
     if not conyuge:
         return Response({'error': 'Este endpoint solo se utiliza cuando el cliente tiene un cónyuge (conyuge=True).'}, status=status.HTTP_400_BAD_REQUEST)
 
     # Validar los datos requeridos del cliente principal
-    campos_requeridos = ['nombres', 'apellidos', 'tipo_documento', 'num_documento', 'direccion', 'email', 'celular', 'inicial_separacion', 'tipo_moneda', 'tipo_cliente', 'conyuge']
-
+    campos_requeridos = ['nombres', 'apellidos', 'tipo_documento', 'num_documento', 'direccion', 'correo', 'celular', 'inicial_separacion', 'tipo_moneda', 'tipo_cliente', 'conyuge', 'cod_boleta']
     campos_faltantes = [campo for campo in campos_requeridos if campo not in data or data.get(campo) in [None, '', False]]
 
     if campos_faltantes:
@@ -755,12 +776,12 @@ def post_lote_conyuge(request):
 
     # 1. Seleccionar un lote libre
     try:
-        lote_libre = Lote.objects.filter(estado='libre').first()
+        lote_libre = Lote.objects.filter(estado='LIBRE').first()
         if not lote_libre:
             return Response({'error': 'No hay lotes libres disponibles'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Marcar el lote como reservado
-        lote_libre.estado = 'reservado'
+        lote_libre.estado = 'RESERVADO'
         lote_libre.save()
     except Exception as e:
         return Response({'error': f'Error al seleccionar el lote libre: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -790,12 +811,13 @@ def post_lote_conyuge(request):
     except Exception as e:
         return Response({'error': f'Error al crear el cronograma de pagos: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    # 4. Crear una instancia de FichaDatosCliente
+    # 4. Crear una instancia de FichaDatosCliente con el código de boleta recibido
     try:
         ficha_datos_cliente = FichaDatosCliente.objects.create(
             fecha_separacion=timezone.now(),
             id_cpagos=cronograma_pagos,
             id_lote=lote_libre,
+            cod_boleta=cod_boleta  # Asignar el código generado desde el otro endpoint
         )
     except Exception as e:
         return Response({'error': f'Error al crear la ficha de datos del cliente: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -830,4 +852,24 @@ def post_lote_conyuge(request):
     except Exception as e:
         return Response({'error': f'Error al crear los datos del cónyuge: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    return Response({'mensaje': 'Lote reservado y datos del cliente y cónyuge registrados correctamente'}, status=status.HTTP_201_CREATED)
+    return Response({'mensaje': 'Lote reservado y datos del cliente y cónyuge registrados correctamente', 'cod_boleta': cod_boleta}, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+def generate_boleta_code(request):
+    # Obtener el último código generado de la base de datos
+    last_ficha = FichaDatosCliente.objects.order_by('-cod_boleta').first()
+    
+    if last_ficha and last_ficha.cod_boleta:
+        # Extraer el número del último código generado
+        last_number = int(last_ficha.cod_boleta.split('-')[1])
+        new_number = last_number + 1
+    else:
+        # Si no hay ningún código previo, empezamos desde 1
+        new_number = 1
+    
+    # Formatear el nuevo número con ceros a la izquierda para que siempre tenga 5 dígitos
+    new_code = f"SO-{new_number:05d}"
+    
+    return Response({'cod_boleta': new_code}, status=status.HTTP_200_OK)
+
