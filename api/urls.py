@@ -40,5 +40,10 @@ urlpatterns=[
     # Endpoint para restablecer la contraseña
     path('password-reset/confirm/<str:token>/', views.reset_password, name='password_reset_complete'),
 
+    path('get_lotes_libres/', views.get_lotes_libres, name='get_lotes_libres'),
+    path('post_lote_libre/', views.post_lote_libre, name='post_lote_libre'),
+    path('post_lote_conyuge/', views.post_lote_conyuge, name='post_lote_conyuge'),
+    
+
 ]
 

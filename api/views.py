@@ -22,24 +22,17 @@ from django.utils.crypto import get_random_string
 from django.urls import reverse
 from .models import PasswordResetToken
 
-
-
-
+from django.db import transaction
+from django.utils import timezone
 
 
 import jwt
-
-
-
 
 
 # -----------------Pruebas
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 # -------------------------------
-
-import hashlib
-
 
 
 # View del modelo Proyecto
@@ -603,3 +596,238 @@ def reset_password(request, token):
 
     except PasswordResetToken.DoesNotExist:
         return Response({'error': 'Token inválido.'}, status=status.HTTP_404_NOT_FOUND)
+    
+
+@api_view(['POST'])
+def get_lotes_libres(request):
+    proyecto_nombre = request.data.get('proyecto_nombre')
+    if not proyecto_nombre:
+        return Response({'error': 'No se proporcionó el nombre del proyecto.'}, status=400)
+    try:
+        proyecto = Proyecto.objects.get(nombre_proyecto=proyecto_nombre)
+    except Proyecto.DoesNotExist:
+        return Response({'error': 'El proyecto no existe.'}, status=404)
+    # Obtener los lotes con estado 'LIBRE' en el proyecto especificado
+    lotes_libres = Lote.objects.filter(id_proyecto=proyecto, estado='LIBRE')
+    # Serializar los lotes
+    serializer = LoteSerializer(lotes_libres, many=True)
+    return Response(serializer.data, status=200)
+
+@api_view(['POST'])
+@transaction.atomic
+def post_lote_libre(request):
+    # Extraer datos del request
+    data = request.data
+
+    # Obtener el ID del lote seleccionado del request
+    lote_id = data.get('lote_id')
+    if not lote_id:
+        return Response({'error': 'No se proporcionó el ID del lote.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Validar los datos del lote seleccionado
+    try:
+        lote_libre = Lote.objects.get(id_lote=lote_id, estado='LIBRE')
+    except Lote.DoesNotExist:
+        return Response({'error': 'El lote seleccionado no está disponible o no existe.'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Obtener los campos del cliente
+    nombres = data.get('nombres')
+    apellidos = data.get('apellidos')
+    tipo_de_documento = data.get('tipo_de_documento')
+    numero_de_documento = data.get('numero_de_documento')
+    direccion = data.get('direccion')
+    email = data.get('email')
+    telefono_fijo = data.get('telefono_fijo')
+    celular = data.get('celular')
+    inicial_de_separacion = data.get('inicial_de_separacion')
+    tipo_de_moneda = data.get('tipo_de_moneda')
+    tiene_conyuge = data.get('tiene_conyuge')
+    tipo_de_cliente = data.get('tipo_de_cliente')
+
+    # Validar los datos requeridos del cliente principal
+    campos_requeridos = ['nombres', 'apellidos', 'tipo_de_documento', 'numero_de_documento', 'direccion', 'email', 'celular', 'inicial_de_separacion', 'tipo_de_moneda', 'tipo_de_cliente']
+
+    campos_faltantes = [campo for campo in campos_requeridos if not data.get(campo)]
+
+    if campos_faltantes:
+        return Response({'error': f'Faltan los siguientes campos requeridos: {", ".join(campos_faltantes)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Marcar el lote como reservado
+    try:
+        lote_libre.estado = 'RESERVADO'
+        lote_libre.save()
+    except Exception as e:
+        return Response({'error': f'Error al reservar el lote: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # Crear una instancia de PersonaClient con los datos proporcionados
+    try:
+        conyuge_bool = True if tiene_conyuge and tiene_conyuge.lower() == 'si' else False
+
+        persona_client = PersonaClient.objects.create(
+            nombres=nombres,
+            apellidos=apellidos,
+            correo=email,
+            celular=celular,
+            telefono_fijo=telefono_fijo,
+            tipo_documento=tipo_de_documento,
+            num_documento=numero_de_documento,
+            conyuge=conyuge_bool,
+            direccion=direccion,
+        )
+    except Exception as e:
+        return Response({'error': f'Error al crear el cliente: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # Crear una instancia de CronogramaPagos
+    try:
+        cronograma_pagos = CronogramaPagos.objects.create(
+            inicial_separacion=inicial_de_separacion,
+            tipo_moneda=tipo_de_moneda,
+        )
+    except Exception as e:
+        return Response({'error': f'Error al crear el cronograma de pagos: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # Crear una instancia de FichaDatosCliente
+    try:
+        ficha_datos_cliente = FichaDatosCliente.objects.create(
+            fecha_separacion=timezone.now(),
+            id_cpagos=cronograma_pagos,
+            id_lote=lote_libre,
+        )
+    except Exception as e:
+        return Response({'error': f'Error al crear la ficha de datos del cliente: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # Crear una instancia de DetallePersona
+    try:
+        detalle_persona = DetallePersona.objects.create(
+            tipo_cliente=tipo_de_cliente,
+            id_persona_client=persona_client,
+            id_fichadc=ficha_datos_cliente,
+        )
+    except Exception as e:
+        return Response({'error': f'Error al crear el detalle de persona: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    return Response({'mensaje': 'Lote reservado y datos del cliente registrados correctamente'}, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@transaction.atomic
+def post_lote_conyuge(request):
+    # Extraer datos del request
+    data = request.data
+
+    # Obtener los campos del cliente principal
+    nombres = data.get('nombres')
+    apellidos = data.get('apellidos')
+    tipo_documento = data.get('tipo_documento')
+    num_documento = data.get('num_documento')
+    direccion = data.get('direccion')
+    email = data.get('email')
+    telefono_fijo = data.get('telefono_fijo')
+    celular = data.get('celular')
+    inicial_separacion = data.get('inicial_separacion')
+    tipo_moneda = data.get('tipo_moneda')
+    conyuge = data.get('conyuge')  # Debería ser un booleano
+    tipo_cliente = data.get('tipo_cliente')
+
+    # Validar que 'conyuge' sea True
+    if not conyuge:
+        return Response({'error': 'Este endpoint solo se utiliza cuando el cliente tiene un cónyuge (conyuge=True).'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Validar los datos requeridos del cliente principal
+    campos_requeridos = ['nombres', 'apellidos', 'tipo_documento', 'num_documento', 'direccion', 'email', 'celular', 'inicial_separacion', 'tipo_moneda', 'tipo_cliente', 'conyuge']
+
+    campos_faltantes = [campo for campo in campos_requeridos if campo not in data or data.get(campo) in [None, '', False]]
+
+    if campos_faltantes:
+        return Response({'error': f'Faltan los siguientes campos requeridos: {", ".join(campos_faltantes)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Validar y obtener datos del cónyuge
+    conyuge_nombres = data.get('conyuge_nombres')
+    conyuge_apellidos = data.get('conyuge_apellidos')
+    conyuge_tipo_documento = data.get('conyuge_tipo_documento')
+    conyuge_num_documento = data.get('conyuge_num_documento')
+
+    # Validar datos requeridos del cónyuge
+    campos_requeridos_conyuge = ['conyuge_nombres', 'conyuge_apellidos', 'conyuge_tipo_documento', 'conyuge_num_documento']
+    campos_faltantes_conyuge = [campo for campo in campos_requeridos_conyuge if not data.get(campo)]
+    if campos_faltantes_conyuge:
+        return Response({'error': f'Faltan los siguientes campos requeridos del cónyuge: {", ".join(campos_faltantes_conyuge)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # 1. Seleccionar un lote libre
+    try:
+        lote_libre = Lote.objects.filter(estado='libre').first()
+        if not lote_libre:
+            return Response({'error': 'No hay lotes libres disponibles'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Marcar el lote como reservado
+        lote_libre.estado = 'reservado'
+        lote_libre.save()
+    except Exception as e:
+        return Response({'error': f'Error al seleccionar el lote libre: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # 2. Crear una instancia de PersonaClient para el cliente principal
+    try:
+        persona_client = PersonaClient.objects.create(
+            nombres=nombres,
+            apellidos=apellidos,
+            correo=email,
+            celular=celular,
+            telefono_fijo=telefono_fijo,
+            tipo_documento=tipo_documento,
+            num_documento=num_documento,
+            conyuge=True,  # Ya que conyuge es True
+            direccion=direccion,
+        )
+    except Exception as e:
+        return Response({'error': f'Error al crear el cliente: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # 3. Crear una instancia de CronogramaPagos
+    try:
+        cronograma_pagos = CronogramaPagos.objects.create(
+            inicial_separacion=inicial_separacion,
+            tipo_moneda=tipo_moneda,
+        )
+    except Exception as e:
+        return Response({'error': f'Error al crear el cronograma de pagos: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # 4. Crear una instancia de FichaDatosCliente
+    try:
+        ficha_datos_cliente = FichaDatosCliente.objects.create(
+            fecha_separacion=timezone.now(),
+            id_cpagos=cronograma_pagos,
+            id_lote=lote_libre,
+        )
+    except Exception as e:
+        return Response({'error': f'Error al crear la ficha de datos del cliente: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # 5. Crear una instancia de DetallePersona para el cliente principal
+    try:
+        detalle_persona = DetallePersona.objects.create(
+            tipo_cliente=tipo_cliente,
+            id_persona_client=persona_client,
+            id_fichadc=ficha_datos_cliente,
+        )
+    except Exception as e:
+        return Response({'error': f'Error al crear el detalle de persona: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # 6. Crear la instancia de PersonaClient para el cónyuge
+    try:
+        # Crear la instancia de PersonaClient para el cónyuge
+        persona_conyuge = PersonaClient.objects.create(
+            nombres=conyuge_nombres,
+            apellidos=conyuge_apellidos,
+            tipo_documento=conyuge_tipo_documento,
+            num_documento=conyuge_num_documento,
+            conyuge=False,  # Asumimos que el cónyuge no tiene otro cónyuge
+        )
+
+        # Crear la instancia de DetallePersona para el cónyuge
+        detalle_persona_conyuge = DetallePersona.objects.create(
+            tipo_cliente='CONYUGE',
+            id_persona_client=persona_conyuge,
+            id_fichadc=ficha_datos_cliente,
+        )
+    except Exception as e:
+        return Response({'error': f'Error al crear los datos del cónyuge: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    return Response({'mensaje': 'Lote reservado y datos del cliente y cónyuge registrados correctamente'}, status=status.HTTP_201_CREATED)

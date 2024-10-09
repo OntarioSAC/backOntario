@@ -151,11 +151,12 @@ class PersonaClient(models.Model):
     num_documento = models.CharField(max_length=255, null=True, blank=True)
     conyuge = models.BooleanField(default=False)  # Por defecto 'No'
     telefono_fijo = models.CharField(max_length=20, null=True, blank=True)
+    direccion = models.CharField(max_length=255, null=True, blank=True)
 
-    def clean(self):
-        # Validación personalizada: si usuario es True, password no puede estar vacío
-        if self.usuario and not self.password:
-            raise ValidationError("El campo 'password' es obligatorio cuando 'usuario' está activado.")
+    # def clean(self):
+    #     # Validación personalizada: si usuario es True, password no puede estar vacío
+    #     if self.usuario and not self.password:
+    #         raise ValidationError("El campo 'password' es obligatorio cuando 'usuario' está activado.")
     
     def __str__(self):
         return f"{self.nombres} - {self.num_documento}"
@@ -313,7 +314,7 @@ class CuotaInicialFraccionada(models.Model):
     def __str__(self):
         return f"Cuota Inicial {self.id_cuota_inicial} - Cronograma {self.id_cpagos.id_cpagos}"
 
-# Fin del modelo FichaDatosCliente
+# Fin del modelo CuotaInicialFraccionada
 # ===========================================
 
 
