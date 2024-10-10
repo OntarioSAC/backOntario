@@ -630,6 +630,7 @@ def post_lote_libre(request):
         return Response({'error': 'El lote seleccionado no está disponible o no existe.'}, status=status.HTTP_404_NOT_FOUND)
 
     
+
     # Obtener los campos del cliente y cónyuge con los nombres correctos según el modelo
     nombres = data.get('nombres')
     apellidos = data.get('apellidos')
@@ -661,7 +662,6 @@ def post_lote_libre(request):
         cod_boleta = f"SO-{new_number:05d}"
     except Exception as e:
         return Response({'error': f'Error al generar el código de boleta: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
     # Validar los datos requeridos del cliente principal
     campos_requeridos = ['nombres', 'apellidos', 'tipo_documento', 'num_documento', 'direccion', 'correo', 'celular', 'inicial_separacion', 'tipo_moneda', 'tipo_cliente']
