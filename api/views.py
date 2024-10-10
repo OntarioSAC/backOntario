@@ -613,6 +613,7 @@ def get_lotes_libres(request):
     return Response(serializer.data, status=200)
 
 
+
 @api_view(['POST'])
 @transaction.atomic
 def post_cliente_separacion(request):
@@ -646,10 +647,12 @@ def post_cliente_separacion(request):
     apellidos_conyuge = data.get('apellidos_conyuge')
     dni_conyuge = data.get('dni_conyuge')
     tipo_cliente = data.get('tipo_cliente')
+    fecha_separacion = data.get('fecha_separacion', timezone.now())  # Si no se proporciona, usa la fecha actual
+    fecha_limite_separacion = data.get('fecha_limite_separacion')  # Nueva fecha límite de separación
 
     # Generar el código de boleta de separación de forma segura
     try:
-        last_ficha = FichaDatosCliente.objects.order_by('-cod_boleta').first()
+        last_ficha = FichaDatosCliente.objects.order_by('-id_fichadc').first()  # Ordenar por el ID para obtener el último registro
         if last_ficha and last_ficha.cod_boleta:
             last_number = int(last_ficha.cod_boleta.split('-')[1])
             new_number = last_number + 1
@@ -683,10 +686,11 @@ def post_cliente_separacion(request):
     except Exception as e:
         return Response({'error': f'Error al crear el cronograma de pagos: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    # Crear una instancia de FichaDatosCliente con el código generado
+    # Crear una instancia de FichaDatosCliente con el código generado, la fecha de separación y la fecha límite de separación
     try:
         ficha_datos_cliente = FichaDatosCliente.objects.create(
-            fecha_separacion=timezone.now(),
+            fecha_separacion=fecha_separacion,
+            fecha_limite_separacion=fecha_limite_separacion,  # Guardar la fecha límite de separación
             id_cpagos=cronograma_pagos,
             id_lote=lote_libre,
             cod_boleta=cod_boleta
@@ -738,6 +742,8 @@ def post_cliente_separacion(request):
         return Response({'error': f'Error al crear el cliente o cónyuge: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response({'mensaje': 'Lote reservado y datos del cliente registrados correctamente', 'cod_boleta': cod_boleta}, status=status.HTTP_201_CREATED)
+
+
 
 @api_view(['POST'])
 @transaction.atomic

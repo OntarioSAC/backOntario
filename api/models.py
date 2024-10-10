@@ -286,6 +286,7 @@ class FichaDatosCliente(models.Model):
     estado_legal = models.CharField(null=True, blank=True)
     fecha_cierre = models.DateField(null=True, blank=True)
     fecha_separacion = models.DateField(null=True, blank=True)
+    fecha_limite_separacion = models.DateField(null=True, blank=True)
     cod_boleta = models.CharField(null=True, blank=True)
     asesor = models.CharField(null=True, blank=True)
 
