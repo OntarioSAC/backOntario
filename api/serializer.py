@@ -185,7 +185,7 @@ class CuotaInicialFraccionadaSerializer(serializers.ModelSerializer):
 # Serializer del modelo DetallePersona
 class DetallePersonaSerializer(serializers.ModelSerializer):
     persona_client = PersonaClientSerializer(source='id_persona_client')
-    fichadc = FichaDatosClienteSerializer(source='id_datos_persona')
+    fichadc = FichaDatosClienteSerializer(source='id_fichadc')
 
     class Meta:
         model = DetallePersona

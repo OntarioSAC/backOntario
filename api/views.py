@@ -643,7 +643,7 @@ def post_cliente_separacion(request):
     tipo_moneda = data.get('tipo_moneda')
     tiene_conyuge = data.get('conyuge')
     nombre_conyuge = data.get('nombre_conyuge')
-    apellidos_conyuge = data.get('apellidos_conyuge')  # Agregar apellidos del cónyuge
+    apellidos_conyuge = data.get('apellidos_conyuge')
     dni_conyuge = data.get('dni_conyuge')
     tipo_cliente = data.get('tipo_cliente')
 
@@ -651,14 +651,11 @@ def post_cliente_separacion(request):
     try:
         last_ficha = FichaDatosCliente.objects.order_by('-cod_boleta').first()
         if last_ficha and last_ficha.cod_boleta:
-            # Extraer el número del último código generado
             last_number = int(last_ficha.cod_boleta.split('-')[1])
             new_number = last_number + 1
         else:
-            # Si no hay ningún código previo, empezamos desde 1
             new_number = 1
         
-        # Formatear el nuevo número con ceros a la izquierda para que siempre tenga 5 dígitos
         cod_boleta = f"SO-{new_number:05d}"
     except Exception as e:
         return Response({'error': f'Error al generar el código de boleta: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -692,12 +689,12 @@ def post_cliente_separacion(request):
             fecha_separacion=timezone.now(),
             id_cpagos=cronograma_pagos,
             id_lote=lote_libre,
-            cod_boleta=cod_boleta  # Asignar el código generado dentro del endpoint
+            cod_boleta=cod_boleta
         )
     except Exception as e:
         return Response({'error': f'Error al crear la ficha de datos del cliente: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    # Crear una instancia de PersonaClient con los datos del cliente principal
+    # Crear una instancia de PersonaClient para el cliente principal
     try:
         conyuge_bool = True if tiene_conyuge and tiene_conyuge.lower() == 'si' else False
 
@@ -724,17 +721,16 @@ def post_cliente_separacion(request):
         if conyuge_bool:
             persona_conyuge = PersonaClient.objects.create(
                 nombres=nombre_conyuge,
-                apellidos=apellidos_conyuge,  # Añadir los apellidos del cónyuge
+                apellidos=apellidos_conyuge,
                 tipo_documento="DNI",
                 num_documento=dni_conyuge,
                 conyuge=False,
                 direccion=direccion,
-                tipo_cliente="CONYUGE"  # Asignar el tipo de cliente como "CONYUGUE" por defecto
             )
 
-            # Crear una instancia de DetallePersona para el cónyuge, relacionándolo con el cliente principal
+            # Crear una instancia de DetallePersona para el cónyuge
             DetallePersona.objects.create(
-                tipo_cliente="CONYUGE",
+                tipo_cliente="CONYUGUE",
                 id_persona_client=persona_conyuge,
                 id_fichadc=ficha_datos_cliente,
             )
@@ -742,7 +738,6 @@ def post_cliente_separacion(request):
         return Response({'error': f'Error al crear el cliente o cónyuge: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response({'mensaje': 'Lote reservado y datos del cliente registrados correctamente', 'cod_boleta': cod_boleta}, status=status.HTTP_201_CREATED)
-
 
 @api_view(['POST'])
 @transaction.atomic
