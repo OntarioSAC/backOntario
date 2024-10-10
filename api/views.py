@@ -612,6 +612,7 @@ def get_lotes_libres(request):
     serializer = LoteSerializer(lotes_libres, many=True)
     return Response(serializer.data, status=200)
 
+
 @api_view(['POST'])
 @transaction.atomic
 def post_lote_libre(request):
@@ -629,8 +630,6 @@ def post_lote_libre(request):
     except Lote.DoesNotExist:
         return Response({'error': 'El lote seleccionado no está disponible o no existe.'}, status=status.HTTP_404_NOT_FOUND)
 
-    
-
     # Obtener los campos del cliente y cónyuge con los nombres correctos según el modelo
     nombres = data.get('nombres')
     apellidos = data.get('apellidos')
@@ -644,6 +643,7 @@ def post_lote_libre(request):
     tipo_moneda = data.get('tipo_moneda')
     tiene_conyuge = data.get('conyuge')
     nombre_conyuge = data.get('nombre_conyuge')
+    apellidos_conyuge = data.get('apellidos_conyuge')  # Agregar apellidos del cónyuge
     dni_conyuge = data.get('dni_conyuge')
     tipo_cliente = data.get('tipo_cliente')
 
@@ -677,35 +677,6 @@ def post_lote_libre(request):
     except Exception as e:
         return Response({'error': f'Error al reservar el lote: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    # Crear una instancia de PersonaClient con los datos proporcionados
-    try:
-        conyuge_bool = True if tiene_conyuge and tiene_conyuge.lower() == 'si' else False
-
-        persona_client = PersonaClient.objects.create(
-            nombres=nombres,
-            apellidos=apellidos,
-            correo=email,
-            celular=celular,
-            telefono_fijo=telefono_fijo,
-            tipo_documento=tipo_documento,
-            num_documento=num_documento,
-            conyuge=conyuge_bool,
-            direccion=direccion,
-        )
-
-        # Si hay cónyuge, guardar la información del cónyuge
-        if conyuge_bool:
-            PersonaClient.objects.create(
-                nombres=nombre_conyuge,
-                apellidos="",
-                tipo_documento="DNI",
-                num_documento=dni_conyuge,
-                conyuge=False,
-                direccion=direccion,
-            )
-    except Exception as e:
-        return Response({'error': f'Error al crear el cliente o cónyuge: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
     # Crear una instancia de CronogramaPagos
     try:
         cronograma_pagos = CronogramaPagos.objects.create(
@@ -726,18 +697,51 @@ def post_lote_libre(request):
     except Exception as e:
         return Response({'error': f'Error al crear la ficha de datos del cliente: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    # Crear una instancia de DetallePersona
+    # Crear una instancia de PersonaClient con los datos del cliente principal
     try:
-        detalle_persona = DetallePersona.objects.create(
+        conyuge_bool = True if tiene_conyuge and tiene_conyuge.lower() == 'si' else False
+
+        persona_client = PersonaClient.objects.create(
+            nombres=nombres,
+            apellidos=apellidos,
+            correo=email,
+            celular=celular,
+            telefono_fijo=telefono_fijo,
+            tipo_documento=tipo_documento,
+            num_documento=num_documento,
+            conyuge=conyuge_bool,
+            direccion=direccion,
+        )
+
+        # Crear una instancia de DetallePersona para el cliente principal
+        DetallePersona.objects.create(
             tipo_cliente=tipo_cliente,
             id_persona_client=persona_client,
             id_fichadc=ficha_datos_cliente,
         )
+
+        # Si hay cónyuge, guardar la información del cónyuge y crear su DetallePersona
+        if conyuge_bool:
+            persona_conyuge = PersonaClient.objects.create(
+                nombres=nombre_conyuge,
+                apellidos=apellidos_conyuge,  # Añadir los apellidos del cónyuge
+                tipo_documento="DNI",
+                num_documento=dni_conyuge,
+                conyuge=False,
+                direccion=direccion,
+                tipo_cliente="CONYUGE"  # Asignar el tipo de cliente como "CONYUGUE" por defecto
+            )
+
+            # Crear una instancia de DetallePersona para el cónyuge, relacionándolo con el cliente principal
+            DetallePersona.objects.create(
+                tipo_cliente="CONYUGE",
+                id_persona_client=persona_conyuge,
+                id_fichadc=ficha_datos_cliente,
+            )
     except Exception as e:
-        return Response({'error': f'Error al crear el detalle de persona: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({'error': f'Error al crear el cliente o cónyuge: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response({'mensaje': 'Lote reservado y datos del cliente registrados correctamente', 'cod_boleta': cod_boleta}, status=status.HTTP_201_CREATED)
-
 
 
 @api_view(['POST'])
