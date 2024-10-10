@@ -629,6 +629,7 @@ def post_lote_libre(request):
     except Lote.DoesNotExist:
         return Response({'error': 'El lote seleccionado no está disponible o no existe.'}, status=status.HTTP_404_NOT_FOUND)
 
+    
     # Obtener los campos del cliente y cónyuge con los nombres correctos según el modelo
     nombres = data.get('nombres')
     apellidos = data.get('apellidos')
@@ -644,14 +645,26 @@ def post_lote_libre(request):
     nombre_conyuge = data.get('nombre_conyuge')
     dni_conyuge = data.get('dni_conyuge')
     tipo_cliente = data.get('tipo_cliente')
-    cod_boleta = data.get('cod_boleta')  # Se espera que este campo se proporcione desde el endpoint generate_boleta_code
 
-    # Validar que el código de boleta esté presente
-    if not cod_boleta:
-        return Response({'error': 'No se proporcionó el código de boleta.'}, status=status.HTTP_400_BAD_REQUEST)
+    # Generar el código de boleta de separación de forma segura
+    try:
+        last_ficha = FichaDatosCliente.objects.order_by('-cod_boleta').first()
+        if last_ficha and last_ficha.cod_boleta:
+            # Extraer el número del último código generado
+            last_number = int(last_ficha.cod_boleta.split('-')[1])
+            new_number = last_number + 1
+        else:
+            # Si no hay ningún código previo, empezamos desde 1
+            new_number = 1
+        
+        # Formatear el nuevo número con ceros a la izquierda para que siempre tenga 5 dígitos
+        cod_boleta = f"SO-{new_number:05d}"
+    except Exception as e:
+        return Response({'error': f'Error al generar el código de boleta: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
     # Validar los datos requeridos del cliente principal
-    campos_requeridos = ['nombres', 'apellidos', 'tipo_documento', 'num_documento', 'direccion', 'correo', 'celular', 'inicial_separacion', 'tipo_moneda', 'tipo_cliente', 'cod_boleta']
+    campos_requeridos = ['nombres', 'apellidos', 'tipo_documento', 'num_documento', 'direccion', 'correo', 'celular', 'inicial_separacion', 'tipo_moneda', 'tipo_cliente']
     campos_faltantes = [campo for campo in campos_requeridos if not data.get(campo)]
 
     if campos_faltantes:
@@ -708,7 +721,7 @@ def post_lote_libre(request):
             fecha_separacion=timezone.now(),
             id_cpagos=cronograma_pagos,
             id_lote=lote_libre,
-            cod_boleta=cod_boleta  # Asignar el código generado desde el otro endpoint
+            cod_boleta=cod_boleta  # Asignar el código generado dentro del endpoint
         )
     except Exception as e:
         return Response({'error': f'Error al crear la ficha de datos del cliente: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -724,6 +737,7 @@ def post_lote_libre(request):
         return Response({'error': f'Error al crear el detalle de persona: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response({'mensaje': 'Lote reservado y datos del cliente registrados correctamente', 'cod_boleta': cod_boleta}, status=status.HTTP_201_CREATED)
+
 
 
 @api_view(['POST'])
