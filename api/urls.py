@@ -41,7 +41,7 @@ urlpatterns=[
     path('password-reset/confirm/<str:token>/', views.reset_password, name='password_reset_complete'),
 
     path('get_lotes_libres/', views.get_lotes_libres, name='get_lotes_libres'),
-    path('post_lote_libre/', views.post_lote_libre, name='post_lote_libre'),
+    path('post_cliente_separacion/', views.post_cliente_separacion, name='post_cliente_separacion'),
     path('post_lote_conyuge/', views.post_lote_conyuge, name='post_lote_conyuge'),
     path('generate_boleta_code/', views.generate_boleta_code, name='post_lote_conyuge'),
     path('get_last_boleta_code/', views.get_last_boleta_code, name='get_last_boleta_code'),

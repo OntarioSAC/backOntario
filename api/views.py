@@ -615,7 +615,7 @@ def get_lotes_libres(request):
 
 @api_view(['POST'])
 @transaction.atomic
-def post_lote_libre(request):
+def post_cliente_separacion(request):
     # Extraer datos del request
     data = request.data
 
