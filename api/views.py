@@ -873,3 +873,13 @@ def generate_boleta_code(request):
     
     return Response({'cod_boleta': new_code}, status=status.HTTP_200_OK)
 
+
+@api_view(['GET'])
+def get_last_boleta_code(request):
+    # Obtener el último código de boleta de la base de datos
+    last_ficha = FichaDatosCliente.objects.order_by('-cod_boleta').first()
+
+    # Si hay un código existente, devolverlo, de lo contrario, devolver un código por defecto
+    last_code = last_ficha.cod_boleta if last_ficha and last_ficha.cod_boleta else "SO-00000"
+
+    return Response({'last_code': last_code}, status=status.HTTP_200_OK)

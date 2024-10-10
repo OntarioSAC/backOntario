@@ -4,7 +4,7 @@ from django.contrib import admin
 from .models import CronogramaPagos, Cuota, CuotaInicialFraccionada, DetallePersona, Empresa, FichaDatosCliente, Lote, Observaciones, PersonaClient, PersonaClient, PersonaStaff, Proyecto
 
 
-admin.site.register(Lote)
+# admin.site.register(Lote)
 admin.site.register(Cuota)
 admin.site.register(Empresa)
 admin.site.register(Proyecto)
@@ -35,3 +35,10 @@ class FichaDatosClienteAdmin(admin.ModelAdmin):
 
 # Registrar FichaDatosCliente con FichaDatosClienteAdmin
 admin.site.register(FichaDatosCliente, FichaDatosClienteAdmin)
+
+
+@admin.register(Lote)
+class LoteAdmin(admin.ModelAdmin):
+    search_fields = ['manzana_lote', 'id_proyecto__nombre_proyecto']  # Campos para buscar
+
+    list_display = ['id_lote', 'manzana_lote', 'area', 'estado', 'id_proyecto']

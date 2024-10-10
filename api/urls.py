@@ -44,6 +44,7 @@ urlpatterns=[
     path('post_lote_libre/', views.post_lote_libre, name='post_lote_libre'),
     path('post_lote_conyuge/', views.post_lote_conyuge, name='post_lote_conyuge'),
     path('generate_boleta_code/', views.generate_boleta_code, name='post_lote_conyuge'),
+    path('get_last_boleta_code/', views.get_last_boleta_code, name='get_last_boleta_code'),
     
 
 ]
