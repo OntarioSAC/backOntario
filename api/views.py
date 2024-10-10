@@ -613,7 +613,6 @@ def get_lotes_libres(request):
     return Response(serializer.data, status=200)
 
 
-
 @api_view(['POST'])
 @transaction.atomic
 def post_cliente_separacion(request):
@@ -698,20 +697,20 @@ def post_cliente_separacion(request):
     except Exception as e:
         return Response({'error': f'Error al crear la ficha de datos del cliente: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    # Crear una instancia de PersonaClient para el cliente principal
+    # Crear o recuperar una instancia de PersonaClient para el cliente principal
     try:
-        conyuge_bool = True if tiene_conyuge and tiene_conyuge.lower() == 'si' else False
-
-        persona_client = PersonaClient.objects.create(
-            nombres=nombres,
-            apellidos=apellidos,
-            correo=email,
-            celular=celular,
-            telefono_fijo=telefono_fijo,
-            tipo_documento=tipo_documento,
+        persona_client, created = PersonaClient.objects.get_or_create(
             num_documento=num_documento,
-            conyuge=conyuge_bool,
-            direccion=direccion,
+            defaults={
+                'nombres': nombres,
+                'apellidos': apellidos,
+                'correo': email,
+                'celular': celular,
+                'telefono_fijo': telefono_fijo,
+                'tipo_documento': tipo_documento,
+                'conyuge': True if tiene_conyuge and tiene_conyuge.lower() == 'si' else False,
+                'direccion': direccion,
+            }
         )
 
         # Crear una instancia de DetallePersona para el cliente principal
@@ -721,15 +720,17 @@ def post_cliente_separacion(request):
             id_fichadc=ficha_datos_cliente,
         )
 
-        # Si hay cónyuge, guardar la información del cónyuge y crear su DetallePersona
-        if conyuge_bool:
-            persona_conyuge = PersonaClient.objects.create(
-                nombres=nombre_conyuge,
-                apellidos=apellidos_conyuge,
-                tipo_documento="DNI",
+        # Si hay cónyuge, verificar y crear su información
+        if tiene_conyuge and tiene_conyuge.lower() == 'si':
+            persona_conyuge, created_conyuge = PersonaClient.objects.get_or_create(
                 num_documento=dni_conyuge,
-                conyuge=False,
-                direccion=direccion,
+                defaults={
+                    'nombres': nombre_conyuge,
+                    'apellidos': apellidos_conyuge,
+                    'tipo_documento': "DNI",
+                    'conyuge': False,
+                    'direccion': direccion,
+                }
             )
 
             # Crear una instancia de DetallePersona para el cónyuge
@@ -742,8 +743,6 @@ def post_cliente_separacion(request):
         return Response({'error': f'Error al crear el cliente o cónyuge: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response({'mensaje': 'Lote reservado y datos del cliente registrados correctamente', 'cod_boleta': cod_boleta}, status=status.HTTP_201_CREATED)
-
-
 
 @api_view(['POST'])
 @transaction.atomic

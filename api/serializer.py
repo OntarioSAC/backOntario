@@ -147,10 +147,14 @@ class FichaDatosClienteSerializer(CustomModelSerializer):
         fields = [
             'id_fichadc',
             'estado_legal',
+            'fecha_cierre',
+            'fecha_separacion',
+            'fecha_limite_separacion',
+            'cod_boleta',
+            'asesor',
             'lote',
             'cpagos'
         ]
-
 
 
 
