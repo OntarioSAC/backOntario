@@ -172,7 +172,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:8000",
     "http://192.168.0.117:8080",
-    "http://192.168.0.14:8080"
+    "http://192.168.0.14:8080",
+    "http://100.42.184.197"  # Backend IP pública
 ]
 
 CORS_ALLOW_CREDENTIALS = True

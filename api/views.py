@@ -521,6 +521,10 @@ class PersonaStaffViewSet(viewsets.ModelViewSet):
     queryset = PersonaStaff.objects.all()
     serializer_class = PersonaStaffSerializer
 
+    def get_serializer_context(self):
+        # Incluir el request en el contexto
+        return {'request': self.request}
+    
 
 # View del modelo SeparacionCliente
 class SeparacionClienteViewSet(viewsets.ModelViewSet):

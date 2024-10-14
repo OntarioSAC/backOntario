@@ -20,8 +20,16 @@ from rest_framework.documentation import include_docs_urls
 
 from api import views
 
+
+from django.conf import settings  # Importar settings
+from django.conf.urls.static import static  # Importar static para media files
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include('api.urls')),
     path('docs/', include_docs_urls(title='Api Documentation')),
 ]
+
+# Agregar la configuración de media solo si estamos en modo DEBUG
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

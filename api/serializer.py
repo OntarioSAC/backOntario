@@ -241,6 +241,15 @@ class PersonaStaffSerializer(CustomModelSerializer):
             'centro_costos',
             'empresa'
         ]
+        
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        request = self.context.get('request')
+
+        if instance.foto and hasattr(instance.foto, 'url'):
+            # Construir la URL completa
+            ret['foto'] = request.build_absolute_uri(instance.foto.url)
+        return ret
 
 
 # Serializer del modelo SeparacionCliente
