@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CronogramaPagos, Cuota, CuotaInicialFraccionada, DetallePersona, Empresa, FichaDatosCliente, Lote, Observaciones, PersonaClient, PersonaStaff, Proyecto
+from .models import CronogramaPagos, Cuota, CuotaInicialFraccionada, DetallePersona, Empresa, FichaDatosCliente, Lote, Observaciones, PersonaClient, PersonaStaff, Proyecto, SeparacionCliente
 from django.contrib.auth.hashers import check_password
 
 
@@ -61,6 +61,7 @@ class ProyectoSerializer(CustomModelSerializer):
             'id_proyecto',
             'nombre_proyecto',
             'fecha_inicio',
+            'imagen',
         ]
 
 
@@ -212,7 +213,7 @@ class EmpresaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Empresa
         fields = [
-            'id_persona',
+            'id_empresa',
             'nombre_empresa',
             'ruc'
         ]
@@ -236,5 +237,37 @@ class PersonaStaffSerializer(CustomModelSerializer):
             'celular',
             'fecha_inicio',
             'fecha_fin',
+            'foto',
+            'centro_costos',
             'empresa'
         ]
+
+
+# Serializer del modelo SeparacionCliente
+class SeparacionClienteSerializer(CustomModelSerializer):
+    fichadc = FichaDatosClienteSerializer(source='id_fichadc')
+
+    class Meta:
+        model = SeparacionCliente
+        fields = [
+            'id_separacion',
+            'fecha_separacion',
+            'fecha_limite_separacion',
+            'monto_separacion',
+            'estado_separacion',
+            'fichadc'
+        ]
+
+
+# Serializer del modelo SeparacionCliente
+class ObservacionSeparacionSerializer(CustomModelSerializer):
+    separacion = SeparacionClienteSerializer(source='id_separacion')
+
+    class Meta:
+        model = SeparacionCliente
+        fields = [
+            'id_observacion',
+            'descripcion',
+            'fecha_creacion',
+            'separacion',
+          ]

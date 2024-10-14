@@ -13,6 +13,9 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 
+import os
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -253,3 +256,8 @@ EMAIL_HOST_PASSWORD = '123$Rodrigo$123'  # La contraseña de la cuenta de correo
 
 # Otros ajustes opcionales (si los necesitas)
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER  # Esta es la dirección desde la que se envían los correos por defecto
+
+
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

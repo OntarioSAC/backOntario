@@ -2,8 +2,8 @@ from dal import autocomplete
 from datetime import datetime, date
 from rest_framework.response import Response
 from rest_framework import viewsets, status
-from .serializer import CronogramaPagosSerializer, CuotaInicialFraccionadaSerializer, CuotaSerializer, DetallePersonaSerializer, EmpresaSerializer, LoteSerializer, ObservacionesSerializer, FichaDatosClienteSerializer, PersonaClientSerializer, PersonaStaffSerializer, ProyectoSerializer
-from .models import CronogramaPagos, Cuota, CuotaInicialFraccionada, DetallePersona, Empresa, Lote, Observaciones, FichaDatosCliente, PersonaClient, PersonaStaff, Proyecto
+from .serializer import CronogramaPagosSerializer, CuotaInicialFraccionadaSerializer, CuotaSerializer, DetallePersonaSerializer, EmpresaSerializer, LoteSerializer, ObservacionSeparacionSerializer, ObservacionesSerializer, FichaDatosClienteSerializer, PersonaClientSerializer, PersonaStaffSerializer, ProyectoSerializer
+from .models import CronogramaPagos, Cuota, CuotaInicialFraccionada, DetallePersona, Empresa, Lote, ObservacionSeparacion, Observaciones, FichaDatosCliente, PersonaClient, PersonaStaff, Proyecto, SeparacionCliente
 from rest_framework.views import APIView
 from django.db import connection
 from datetime import timedelta, date
@@ -520,6 +520,20 @@ class PersonaStaffViewSet(viewsets.ModelViewSet):
 
     queryset = PersonaStaff.objects.all()
     serializer_class = PersonaStaffSerializer
+
+
+# View del modelo SeparacionCliente
+class SeparacionClienteViewSet(viewsets.ModelViewSet):
+
+    queryset = SeparacionCliente.objects.all()
+    serializer_class = PersonaClientSerializer
+
+
+# View del modelo ObservacionSeparacion
+class ObservacionSeparacionViewSet(viewsets.ModelViewSet):
+
+    queryset = ObservacionSeparacion.objects.all()
+    serializer_class = ObservacionSeparacionSerializer
 
 
 

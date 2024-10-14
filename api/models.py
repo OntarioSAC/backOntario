@@ -47,6 +47,8 @@ class PersonaStaff(models.Model):
     fecha_inicio = models.DateField(default=timezone.now)  # Fecha por defecto: hoy
     fecha_fin = models.DateField(null=True, blank=True)
     rol = models.CharField(null=True, blank=True)
+    foto = models.ImageField(upload_to='personas/', null=True, blank=True)  # Nuevo campo
+    centro_costos = models.CharField(max_length=100,null=True, blank=True)
 
     id_empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, null=True, blank=True)
 
@@ -70,6 +72,8 @@ class Proyecto(models.Model):
     fecha_inicio = models.DateField(null=True, blank=True)
     id_empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, null=True, blank=True)
     
+    imagen = models.ImageField(upload_to='proyectos/', null=True, blank=True)  # Nuevo campo
+
     def save(self, *args, **kwargs):
         if not self.id_proyecto:  # Solo si no hay un ID asignado
             existing_ids = Proyecto.objects.values_list('id_proyecto', flat=True).order_by('id_proyecto')
@@ -365,3 +369,50 @@ class PasswordResetToken(models.Model):
     
     def delete(self, *args, **kwargs):
         raise ValidationError("La eliminación de registros no está permitida.")
+
+# Fin del modelo PasswordResetToken
+# ===========================================
+
+
+
+# Inicio del modelo SeparacionCliente
+
+class SeparacionCliente(models.Model):
+    id_separacion = models.AutoField(primary_key=True)
+    fecha_separacion = models.DateField(default=timezone.now)
+    fecha_limite_separacion = models.DateField(null=True, blank=True)
+    monto_separacion = models.FloatField(null=True, blank=True)
+    estado_separacion = models.CharField(max_length=20, choices=[
+        ('ACTIVO', 'Activo'),
+        ('CANCELADO', 'Cancelado'),
+    ], default='ACTIVO')
+    
+    id_fichadc = models.ForeignKey('FichaDatosCliente', on_delete=models.CASCADE, null=True, blank=True)
+
+    def __str__(self):
+        return f"Separación {self.id_separacion} - Ficha {self.id_fichadc}"
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("La eliminación de registros no está permitida.")
+
+# Fin del modelo SeparacionCliente
+# ===========================================
+
+
+# Inicio del modelo ObservacionSeparacion
+
+class ObservacionSeparacion(models.Model):
+    id_observacion = models.AutoField(primary_key=True)
+    descripcion = models.CharField(max_length=255, null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+
+    id_separacion = models.ForeignKey('SeparacionCliente', on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"Observación {self.id_observacion} - Separación {self.id_separacion.id_separacion}"
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("La eliminación de registros no está permitida.")
+
+# Fin del modelo ObservacionSeparacion
+# ===========================================

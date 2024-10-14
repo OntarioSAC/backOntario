@@ -1,7 +1,7 @@
 from dal import autocomplete
 from django import forms
 from django.contrib import admin
-from .models import CronogramaPagos, Cuota, CuotaInicialFraccionada, DetallePersona, Empresa, FichaDatosCliente, Lote, Observaciones, PersonaClient, PersonaClient, PersonaStaff, Proyecto
+from .models import CronogramaPagos, Cuota, CuotaInicialFraccionada, DetallePersona, Empresa, FichaDatosCliente, Lote, ObservacionSeparacion, Observaciones, PersonaClient, PersonaClient, PersonaStaff, Proyecto, SeparacionCliente
 
 
 # admin.site.register(Lote)
@@ -15,6 +15,9 @@ admin.site.register(DetallePersona)
 admin.site.register(CronogramaPagos)
 # admin.site.register(FichaDatosCliente)
 admin.site.register(CuotaInicialFraccionada)
+
+admin.site.register(SeparacionCliente)
+admin.site.register(ObservacionSeparacion)
 
 
 

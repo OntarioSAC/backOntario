@@ -4,6 +4,10 @@ from rest_framework import routers
 from api import views
 from .views import PersonaAutocomplete, LoteAutocomplete, CpagosAutocomplete, VerificarYCriarCuotas
 
+from django.conf import settings
+from django.conf.urls.static import static
+
+
 router=routers.DefaultRouter()
 router.register(r'proyectos',views.ProyectoViewSet)                                 # Url del modelo Proyecto
 router.register(r'personaclient',views.PersonaClientViewSet)                        # Url del modelo PersonaClient
@@ -16,6 +20,9 @@ router.register(r'cuotainicialfraccionada',views.CuotaInicialFraccionadaViewSet)
 router.register(r'detallepersona',views.DetallePersonaViewSet)                      # Url del modelo DetallePersona
 router.register(r'empresa',views.EmpresaViewSet)                                    # Url del modelo Empresa
 router.register(r'personastaff',views.PersonaStaffViewSet)                          # Url del modelo PersonaStaff
+router.register(r'separacioncliente',views.SeparacionClienteViewSet)                # Url del modelo SeparacionCliente
+router.register(r'observacionseparacion',views.ObservacionSeparacionViewSet)                # Url del modelo ObservacionSeparacion
+
 
 
 urlpatterns=[
@@ -46,6 +53,7 @@ urlpatterns=[
     path('generate_boleta_code/', views.generate_boleta_code, name='post_lote_conyuge'),
     path('get_last_boleta_code/', views.get_last_boleta_code, name='get_last_boleta_code'),
     
-
 ]
 
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
