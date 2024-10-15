@@ -194,12 +194,18 @@ def get_proyectos(request):
         # Obtener los lotes relacionados con cada proyecto
         lotes = Lote.objects.filter(id_proyecto=proyecto)
 
+        # Obtener la URL completa de la imagen si existe
+        imagen_url = (
+            request.build_absolute_uri(proyecto.imagen.url)
+            if proyecto.imagen else None
+        )
+
         # Prepara la estructura del proyecto con los lotes asociados
         proyecto_data = {
             'id_proyecto': proyecto.id_proyecto,
             'nombre_proyecto': proyecto.nombre_proyecto,
             'fecha_inicio': proyecto.fecha_inicio,
-            'imagen':proyecto.imagen,
+            'imagen': imagen_url,
             'lotes': [
                 {
                     'id_lote': lote.id_lote,
