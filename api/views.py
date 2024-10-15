@@ -199,6 +199,7 @@ def get_proyectos(request):
             'id_proyecto': proyecto.id_proyecto,
             'nombre_proyecto': proyecto.nombre_proyecto,
             'fecha_inicio': proyecto.fecha_inicio,
+            'imagen':proyecto.imagen,
             'lotes': [
                 {
                     'id_lote': lote.id_lote,
