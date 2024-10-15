@@ -267,7 +267,7 @@ class Cuota(models.Model):
     tipo_moneda = models.CharField(default="SOLES",null=True, blank=True)
 
     def __str__(self):
-        return f"Cuota {self.id_cuota}"
+        return f"Cuota {self.id_cuota} - {self.id_cpagos}"
     
     def clean(self):
         # Validación para asegurar que monto_pago_adelantado solo se llena si pago_adelantado es True

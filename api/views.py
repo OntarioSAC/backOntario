@@ -25,6 +25,8 @@ from .models import PasswordResetToken
 from django.db import transaction
 from django.utils import timezone
 
+from dateutil.relativedelta import relativedelta  # Manejo de meses precisos
+
 
 import jwt
 
@@ -934,3 +936,85 @@ def get_last_boleta_code(request):
     last_code = last_ficha.cod_boleta if last_ficha and last_ficha.cod_boleta else "SO-00000"
 
     return Response({'last_code': last_code}, status=status.HTTP_200_OK)
+
+
+
+@api_view(['POST'])
+def crear_cuotas(request):
+    try:
+        # Obtener los datos del request
+        id_cpagos = request.data.get('id_cpagos')
+        cronograma = CronogramaPagos.objects.get(id_cpagos=id_cpagos)
+
+        # Verificar si ya existen cuotas asociadas a este cronograma y eliminarlas
+        Cuota.objects.filter(id_cpagos=cronograma).delete()
+
+        # Validar que existan los valores necesarios para el cálculo
+        if (
+            cronograma.numero_cuotas_pagadas and 
+            cronograma.precio_venta_soles and 
+            cronograma.cuota_inicial_soles
+        ):
+            # Calcular el monto de cada cuota
+            monto_cuota = (
+                (cronograma.precio_venta_soles - cronograma.cuota_inicial_soles) / 
+                cronograma.numero_cuotas_pagadas
+            )
+        else:
+            # Crear una cuota sin monto si no se puede calcular
+            cuota = Cuota.objects.create(
+                id_cpagos=cronograma,
+                pago_adelantado=False,
+                estado=False,  # No moroso
+                tipo_moneda='SOLES'
+            )
+            return Response(
+                {'mensaje': 'Cuota creada sin monto.'}, 
+                status=status.HTTP_201_CREATED
+            )
+
+        # Crear las cuotas a partir de la fecha de pago hacia atrás, con la primera cuota morosa
+        cuotas_creadas = []
+        fecha_actual = cronograma.fecha_pago_cuota  # Fecha base para la primera cuota
+        dia_original = fecha_actual.day  # Mantener el día original de la fecha
+
+        for i in range(cronograma.numero_cuotas_pagadas):
+            # Intentar mantener el día original
+            try:
+                fecha_cuota = fecha_actual.replace(day=dia_original)
+            except ValueError:
+                # Si no existe el día original (como 30 en febrero), usar el último día del mes
+                fecha_cuota = fecha_actual + relativedelta(day=31)
+
+            # Crear la cuota (la primera cuota será morosa)
+            cuota = Cuota.objects.create(
+                fecha_pago_cuota=fecha_cuota,
+                monto_cuota=monto_cuota,
+                id_cpagos=cronograma,
+                pago_adelantado=False,
+                estado=True if i == 0 else False,  # La primera cuota es morosa
+                tipo_moneda='SOLES'
+            )
+            cuotas_creadas.append(cuota.id_cuota)
+
+            # Restar un mes para la siguiente cuota
+            fecha_actual -= relativedelta(months=1)
+
+        return Response(
+            {
+                'mensaje': f'{len(cuotas_creadas)} cuotas creadas con éxito.',
+                'cuotas': cuotas_creadas
+            },
+            status=status.HTTP_201_CREATED
+        )
+
+    except CronogramaPagos.DoesNotExist:
+        return Response(
+            {'error': 'Cronograma de pagos no encontrado.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': f'Ocurrió un error: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
