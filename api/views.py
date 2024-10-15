@@ -479,6 +479,13 @@ def login(request):
             # Crear o obtener el token del usuario
             token, created = Token.objects.get_or_create(user=user)
             
+            # Preparar la URL de la foto si existe
+            foto_url = (
+                request.build_absolute_uri(persona_staff.foto.url)
+                if persona_staff.foto
+                else None
+            )
+
             # Retornar los datos del usuario junto con los detalles de PersonaStaff y el token
             return Response({
                 'token': token.key,
@@ -493,6 +500,7 @@ def login(request):
                     'rol': persona_staff.rol,
                     'area': persona_staff.area,
                     'dni': persona_staff.dni,
+                    'foto': foto_url,  # URL de la foto
                     'empresa': {
                         'nombre_empresa': empresa.nombre_empresa,
                         'ruc': empresa.ruc
