@@ -938,7 +938,6 @@ def get_last_boleta_code(request):
     return Response({'last_code': last_code}, status=status.HTTP_200_OK)
 
 
-
 @api_view(['POST'])
 def crear_cuotas(request):
     try:
