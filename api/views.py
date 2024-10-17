@@ -26,6 +26,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from dateutil.relativedelta import relativedelta  # Manejo de meses precisos
+from rest_framework.pagination import PageNumberPagination
 
 
 import jwt
@@ -133,14 +134,24 @@ class CuotaInicialFraccionadaViewSet(viewsets.ModelViewSet):
 
 #     return Response(data)
 
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 30  # Cantidad de elementos por página
+    page_size_query_param = 'page_size'
+    max_page_size = 1000
 
 @api_view(['GET'])
 def getData(request):
+    # Inicializa el paginador
+    paginator = StandardResultsSetPagination()
+
     # Obtener todos los objetos de FichaDatosCliente con relaciones necesarias
     fichas = FichaDatosCliente.objects.select_related('id_lote', 'id_cpagos', 'id_lote__id_proyecto').prefetch_related('detallepersona_set')
+    
+    # Aplica la paginación
+    result_page = paginator.paginate_queryset(fichas, request)
 
     data = []
-    for ficha in fichas:
+    for ficha in result_page:
         lote = ficha.id_lote
         cpagos = ficha.id_cpagos
         proyecto = lote.id_proyecto
