@@ -135,28 +135,25 @@ class CuotaInicialFraccionadaViewSet(viewsets.ModelViewSet):
 #     return Response(data)
 
 class StandardResultsSetPagination(PageNumberPagination):
-    page_size = 30  # Cantidad de elementos por página
-    page_size_query_param = 'page_size'
-    max_page_size = 1000
+    page_size = 30  # Establece el tamaño de página por defecto a 30
+    # Si no deseas permitir que el cliente cambie el tamaño de página, comenta o elimina la siguiente línea:
+    # page_size_query_param = 'page_size'
+    # Establece el tamaño máximo de página permitido:
+    max_page_size = 30
 
 @api_view(['GET'])
 def getData(request):
-    # Inicializa el paginador
     paginator = StandardResultsSetPagination()
-
-    # Obtener todos los objetos de FichaDatosCliente con relaciones necesarias
     fichas = FichaDatosCliente.objects.select_related('id_lote', 'id_cpagos', 'id_lote__id_proyecto').prefetch_related('detallepersona_set')
     
-    # Aplica la paginación
     result_page = paginator.paginate_queryset(fichas, request)
-
+    
     data = []
     for ficha in result_page:
         lote = ficha.id_lote
         cpagos = ficha.id_cpagos
         proyecto = lote.id_proyecto
 
-        # Prepara los datos de personas relacionadas
         personas_data = [
             {
                 'nombres': detalle.id_persona_client.nombres,
@@ -170,7 +167,6 @@ def getData(request):
             for detalle in ficha.detallepersona_set.all()
         ]
 
-        # Manejar las cuotas del cronograma de pagos
         cuotas = Cuota.objects.filter(id_cpagos=cpagos).order_by('fecha_pago_cuota')
         morosidad_general = False
         dias_morosidad_total = 0
@@ -181,24 +177,24 @@ def getData(request):
                 if dias_morosidad > 0:
                     morosidad_general = True
                     dias_morosidad_total += dias_morosidad
-                    cuota.dias_morosidad = dias_morosidad
-                    cuota.save()
-                else:
-                    cuota.dias_morosidad = 0
-                    cuota.save()
 
-        # Prepara los datos para la respuesta
         ficha_data = {
             'id_fichadc': ficha.id_fichadc,
             'proyecto': proyecto.nombre_proyecto,
             'lote': lote.manzana_lote,
-            'morosidad': cuota.estado,
+            'morosidad': morosidad_general,
             'dias_morosidad': dias_morosidad_total,
             'personas': personas_data
         }
         data.append(ficha_data)
 
-    return Response(data)
+    # Agrega la información del total de páginas y del total de elementos
+    response = paginator.get_paginated_response(data)
+    response.data['total_pages'] = paginator.page.paginator.num_pages  # Total de páginas
+    response.data['total_items'] = paginator.page.paginator.count  # Total de elementos
+
+    return response
+
 
 @api_view(['GET'])
 def get_cronograma_pagos(request, id_fichadc):
