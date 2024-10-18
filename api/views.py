@@ -3,7 +3,7 @@ from datetime import datetime, date
 from rest_framework.response import Response
 from rest_framework import viewsets, status
 from .serializer import CronogramaPagosSerializer, CuotaInicialFraccionadaSerializer, CuotaSerializer, DetallePersonaSerializer, EmpresaSerializer, LoteSerializer, ObservacionSeparacionSerializer, ObservacionesSerializer, FichaDatosClienteSerializer, PersonaClientSerializer, PersonaStaffSerializer, ProyectoSerializer
-from .models import CronogramaPagos, Cuota, CuotaInicialFraccionada, DetallePersona, Empresa, Lote, ObservacionSeparacion, Observaciones, FichaDatosCliente, PersonaClient, PersonaStaff, Proyecto, SeparacionCliente
+from .models import ComprobantePago, CronogramaPagos, Cuota, CuotaInicialFraccionada, DetallePersona, Empresa, Lote, ObservacionSeparacion, Observaciones, FichaDatosCliente, PersonaClient, PersonaStaff, Proyecto, SeparacionCliente
 from rest_framework.views import APIView
 from django.db import connection
 from datetime import timedelta, date
@@ -136,18 +136,21 @@ class CuotaInicialFraccionadaViewSet(viewsets.ModelViewSet):
 
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 30  # Establece el tamaño de página por defecto a 30
-    # Si no deseas permitir que el cliente cambie el tamaño de página, comenta o elimina la siguiente línea:
-    # page_size_query_param = 'page_size'
-    # Establece el tamaño máximo de página permitido:
     max_page_size = 30
 
-@api_view(['GET'])
+@api_view(['POST'])
 def getData(request):
     paginator = StandardResultsSetPagination()
-    fichas = FichaDatosCliente.objects.select_related('id_lote', 'id_cpagos', 'id_lote__id_proyecto').prefetch_related('detallepersona_set')
+    fichas = FichaDatosCliente.objects.select_related(
+        'id_lote', 'id_cpagos', 'id_lote__id_proyecto'
+    ).prefetch_related('detallepersona_set')
     
     result_page = paginator.paginate_queryset(fichas, request)
-    
+
+    # Obtener el valor de 'dias_morosidad' y 'estado' desde el cuerpo de la solicitud
+    dias_morosidad = request.data['dias_morosidad']
+    estado_cuota = request.data['estado']  # Asumiendo que también recibirás 'estado'
+
     data = []
     for ficha in result_page:
         lote = ficha.id_lote
@@ -170,13 +173,27 @@ def getData(request):
         cuotas = Cuota.objects.filter(id_cpagos=cpagos).order_by('fecha_pago_cuota')
         morosidad_general = False
         dias_morosidad_total = 0
+        comprobantes_data = []
 
         for cuota in cuotas:
-            if cuota.estado and (date.today() > cuota.fecha_pago_cuota):
-                dias_morosidad = (date.today() - cuota.fecha_pago_cuota).days
-                if dias_morosidad > 0:
-                    morosidad_general = True
-                    dias_morosidad_total += dias_morosidad
+            # Usar el valor de 'estado' y 'dias_morosidad' proporcionados por el frontend
+            cuota.estado = estado_cuota
+            if cuota.estado and dias_morosidad > 0:
+                morosidad_general = True
+                dias_morosidad_total += dias_morosidad
+
+            # Agregar los comprobantes de pago relacionados
+            comprobantes = ComprobantePago.objects.filter(id_cuota=cuota)
+            for comprobante in comprobantes:
+                comprobante_data = {
+                    'id_comprobante_pago': comprobante.id_comprobante_pago,
+                    'fecha_pago': comprobante.fecha_pago,
+                    'observaciones': comprobante.observaciones,
+                    'codigo': comprobante.codigo,
+                    'monto_cuota_pagado': comprobante.monto_cuota_pagado,
+                    'moneda_pago': comprobante.moneda_pago
+                }
+                comprobantes_data.append(comprobante_data)
 
         ficha_data = {
             'id_fichadc': ficha.id_fichadc,
@@ -184,17 +201,17 @@ def getData(request):
             'lote': lote.manzana_lote,
             'morosidad': morosidad_general,
             'dias_morosidad': dias_morosidad_total,
-            'personas': personas_data
+            'personas': personas_data,
+            'comprobantes': comprobantes_data
         }
         data.append(ficha_data)
 
-    # Agrega la información del total de páginas y del total de elementos
+    # Agregar la información del total de páginas y del total de elementos
     response = paginator.get_paginated_response(data)
     response.data['total_pages'] = paginator.page.paginator.num_pages  # Total de páginas
     response.data['total_items'] = paginator.page.paginator.count  # Total de elementos
 
     return response
-
 
 @api_view(['GET'])
 def get_cronograma_pagos(request, id_fichadc):
@@ -358,18 +375,22 @@ class CronogramaPagosViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-
-
 # View del modelo Cuota
 class CuotaViewSet(viewsets.ModelViewSet):
     queryset = Cuota.objects.all()
     serializer_class = CuotaSerializer
 
+# View del modelo Comprobante_pago
+class ComprobantePagoViewSet(viewsets.ModelViewSet):
+    queryset = Cuota.objects.all()
+    serializer_class = ComprobantePago
 
 # View del modelo Observaciones
 class ObservacionesViewSet(viewsets.ModelViewSet):
     queryset = Observaciones.objects.all()
     serializer_class = ObservacionesSerializer
+
+
 
 
 @api_view(['PUT'])
@@ -381,11 +402,9 @@ def putMorosidad(request, id_fichadc, id_cuota):
         # Buscar la cuota específica asociada al cronograma de pagos de esta ficha
         cuota = Cuota.objects.get(id_cuota=id_cuota, id_cpagos=ficha_cliente.id_cpagos)
 
-        # Obtener el cronograma de pagos asociado
-        cronograma_pagos = ficha_cliente.id_cpagos
-
         # Obtener el nuevo estado del request
         nuevo_estado = request.data.get('estado', None)
+        fecha_pago = request.data.get('fecha_pago', None)
 
         # Validar que el nuevo estado esté presente en la solicitud
         if nuevo_estado is None:
@@ -396,14 +415,31 @@ def putMorosidad(request, id_fichadc, id_cuota):
 
         # Si el estado es True (hay morosidad), recalcular los días de morosidad
         if cuota.estado:
-            if cronograma_pagos.fecha_pago_cuota and cronograma_pagos.fecha_pago_cuota < date.today():
-                dias_morosidad = (date.today() - cronograma_pagos.fecha_pago_cuota).days
+            if cuota.fecha_pago_cuota and cuota.fecha_pago_cuota < date.today():
+                dias_morosidad = (date.today() - cuota.fecha_pago_cuota).days
                 cuota.dias_morosidad = dias_morosidad
             else:
                 cuota.dias_morosidad = 0  # Si la fecha es futura o hoy, no hay morosidad
         else:
-            # Si no hay morosidad (estado False), poner días de morosidad en 0
-            cuota.dias_morosidad = 0
+            cuota.dias_morosidad = 0  # No hay morosidad
+
+        # Manejo de ComprobantePago
+        if fecha_pago:
+            # Obtener el último comprobante de pago para la cuota
+            comprobante = ComprobantePago.objects.filter(id_cuota=cuota).order_by('-fecha_pago').first()
+
+            if comprobante:
+                # Actualizar la fecha del último comprobante
+                comprobante.fecha_pago = fecha_pago
+                comprobante.save()
+            else:
+                # Crear un nuevo comprobante si no existe
+                nuevo_comprobante = ComprobantePago.objects.create(
+                    fecha_pago=fecha_pago,
+                    id_cuota=cuota,
+                    monto_cuota=cuota.monto_cuota,  # Asumiendo que quieres replicar el monto de la cuota
+                    moneda_pago=cuota.tipo_moneda  # Asumiendo que quieres replicar el tipo de moneda
+                )
 
         # Guardar los cambios en la cuota
         cuota.save()
@@ -412,7 +448,8 @@ def putMorosidad(request, id_fichadc, id_cuota):
         return Response({
             "message": f"Cuota {id_cuota} actualizada para la ficha {id_fichadc}",
             "estado": cuota.estado,
-            "dias_morosidad": cuota.dias_morosidad
+            "dias_morosidad": cuota.dias_morosidad,
+            "fecha_pago_comprobante": comprobante.fecha_pago if comprobante else nuevo_comprobante.fecha_pago
         }, status=status.HTTP_200_OK)
 
     except FichaDatosCliente.DoesNotExist:

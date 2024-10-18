@@ -257,15 +257,13 @@ class CronogramaPagos(models.Model):
 class Cuota(models.Model):
     id_cuota = models.AutoField(primary_key=True)
     fecha_pago_cuota = models.DateField(null=True, blank=True)
-    pago_adelantado = models.BooleanField(default=False)
-    monto_pago_adelantado = models.FloatField(null=True, blank=True)
     monto_cuota = models.FloatField(null=True, blank=True)
     estado = models.BooleanField(default=False) # True: moroso, False: pagado
     dias_morosidad = models.IntegerField(null=True, blank=True)
+    tipo_moneda = models.CharField(default="SOLES",null=True, blank=True)
     id_cpagos = models.ForeignKey(
         CronogramaPagos, on_delete=models.CASCADE, null=True)
-    tipo_moneda = models.CharField(default="SOLES",null=True, blank=True)
-
+    
     def __str__(self):
         return f"Cuota {self.id_cuota} - {self.id_cpagos}"
     
@@ -281,6 +279,28 @@ class Cuota(models.Model):
 # ===========================================
 
 
+# Inicio del modelo Comprobante_pago
+
+class ComprobantePago(models.Model):
+    id_comprobante_pago = models.AutoField(primary_key=True)
+    fecha_pago = models.DateField(null=True, blank=True)
+    observaciones = models.CharField(null=True, blank=True)
+    codigo = models.CharField(null=True, blank=True)
+    monto_cuota = models.FloatField(null=True, blank=True)
+    imagen_comprobante = models.ImageField(upload_to='comprobantes_pago/', null=True, blank=True)
+    monto_cuota_pagado = models.FloatField(null=True, blank=True)
+    moneda_pago = models.CharField(default="SOLES",null=True, blank=True)
+    id_cuota= models.ForeignKey(
+        Cuota, on_delete=models.CASCADE, null=True)
+    
+    def __str__(self):
+        return f"Comprobante p {self.id_comprobante_pago} - Cuota {self.id_cuota}"
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("La eliminación de registros no está permitida.")
+
+# Fin del modelo Cuota
+# ===========================================
 
 
 # Inicio del modelo FichaDatosCliente

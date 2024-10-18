@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CronogramaPagos, Cuota, CuotaInicialFraccionada, DetallePersona, Empresa, FichaDatosCliente, Lote, Observaciones, PersonaClient, PersonaStaff, Proyecto, SeparacionCliente
+from .models import ComprobantePago, CronogramaPagos, Cuota, CuotaInicialFraccionada, DetallePersona, Empresa, FichaDatosCliente, Lote, Observaciones, PersonaClient, PersonaStaff, Proyecto, SeparacionCliente
 from django.contrib.auth.hashers import check_password
 
 
@@ -133,6 +133,25 @@ class CuotaSerializer(CustomModelSerializer):
             'monto_pago_adelantado',
             'monto_cuota',
             'cpagos',
+        ]
+
+
+# Serializer del modelo Cuota
+class ComprobantePagoSerializer(CustomModelSerializer):
+    cuotas = CuotaSerializer(source='id_cuota')
+
+    class Meta:
+        model = ComprobantePago
+        fields = [
+            'id_comprobante_pago',
+            'fecha_pago',
+            'observaciones',
+            'codigo',
+            'monto_cuota',
+            'imagen_comprobante',
+            'monto_cuota_pagado',
+            'moneda_pago',
+            'id_cuota',
         ]
 
 
