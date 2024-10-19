@@ -267,10 +267,10 @@ class Cuota(models.Model):
     def __str__(self):
         return f"Cuota {self.id_cuota} - {self.id_cpagos}"
     
-    def clean(self):
-        # Validación para asegurar que monto_pago_adelantado solo se llena si pago_adelantado es True
-        if not self.pago_adelantado and self.monto_pago_adelantado:
-            raise ValidationError("No se puede llenar monto_pago_adelantado si pago_adelantado es False.")
+    # def clean(self):
+    #     # Validación para asegurar que monto_pago_adelantado solo se llena si pago_adelantado es True
+    #     if not self.pago_adelantado and self.monto_pago_adelantado:
+    #         raise ValidationError("No se puede llenar monto_pago_adelantado si pago_adelantado es False.")
 
     def delete(self, *args, **kwargs):
         raise ValidationError("La eliminación de registros no está permitida.")

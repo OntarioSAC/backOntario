@@ -93,7 +93,7 @@ WSGI_APPLICATION = 'drf.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'ontariodb_production',
+        'NAME': 'ontariodb_v1',
         'USER': 'postgres',
         'PASSWORD': 'Ontariomain000',
         'HOST': 'localhost',

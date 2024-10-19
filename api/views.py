@@ -27,7 +27,7 @@ from django.utils import timezone
 
 from dateutil.relativedelta import relativedelta  # Manejo de meses precisos
 from rest_framework.pagination import PageNumberPagination
-
+from django.db.models import Sum
 
 import jwt
 
@@ -138,7 +138,7 @@ class StandardResultsSetPagination(PageNumberPagination):
     page_size = 30  # Establece el tamaño de página por defecto a 30
     max_page_size = 30
 
-@api_view(['POST'])
+@api_view(['GET'])
 def getData(request):
     paginator = StandardResultsSetPagination()
     fichas = FichaDatosCliente.objects.select_related(
@@ -146,11 +146,7 @@ def getData(request):
     ).prefetch_related('detallepersona_set')
     
     result_page = paginator.paginate_queryset(fichas, request)
-
-    # Obtener el valor de 'dias_morosidad' y 'estado' desde el cuerpo de la solicitud
-    dias_morosidad = request.data['dias_morosidad']
-    estado_cuota = request.data['estado']  # Asumiendo que también recibirás 'estado'
-
+    
     data = []
     for ficha in result_page:
         lote = ficha.id_lote
@@ -170,19 +166,31 @@ def getData(request):
             for detalle in ficha.detallepersona_set.all()
         ]
 
+        # Obtener todas las cuotas y la última cuota
         cuotas = Cuota.objects.filter(id_cpagos=cpagos).order_by('fecha_pago_cuota')
+        ultima_cuota = cuotas.last()  # Obtener la última cuota
         morosidad_general = False
         dias_morosidad_total = 0
         comprobantes_data = []
 
         for cuota in cuotas:
-            # Usar el valor de 'estado' y 'dias_morosidad' proporcionados por el frontend
-            cuota.estado = estado_cuota
-            if cuota.estado and dias_morosidad > 0:
-                morosidad_general = True
-                dias_morosidad_total += dias_morosidad
+            # Verifica la morosidad
+            if cuota.estado:  # Solo calcular si el estado es True (morosidad)
+                if date.today() > cuota.fecha_pago_cuota:
+                    dias_morosidad = (date.today() - cuota.fecha_pago_cuota).days
+                    if dias_morosidad > 0:
+                        morosidad_general = True
+                        cuota.estado=morosidad_general
+                        dias_morosidad_total += dias_morosidad
 
-            # Agregar los comprobantes de pago relacionados
+            # Si es la última cuota y está en morosidad, guardar los días de morosidad
+            if cuota == ultima_cuota:
+                if cuota.estado:  # Si la cuota aún está en morosidad, se actualiza
+                    cuota.dias_morosidad = dias_morosidad_total
+                # Si el estado cambió a False (pagado), no se recalcula ni se altera dias_morosidad
+                cuota.save()
+
+            # Agrega los comprobantes de pago relacionados
             comprobantes = ComprobantePago.objects.filter(id_cuota=cuota)
             for comprobante in comprobantes:
                 comprobante_data = {
@@ -199,19 +207,20 @@ def getData(request):
             'id_fichadc': ficha.id_fichadc,
             'proyecto': proyecto.nombre_proyecto,
             'lote': lote.manzana_lote,
-            'morosidad': morosidad_general,
-            'dias_morosidad': dias_morosidad_total,
+            'morosidad': cuota.estado,
+            'dias_morosidad': cuota.dias_morosidad,
             'personas': personas_data,
             'comprobantes': comprobantes_data
         }
         data.append(ficha_data)
 
-    # Agregar la información del total de páginas y del total de elementos
+    # Agrega la información del total de páginas y del total de elementos
     response = paginator.get_paginated_response(data)
     response.data['total_pages'] = paginator.page.paginator.num_pages  # Total de páginas
     response.data['total_items'] = paginator.page.paginator.count  # Total de elementos
 
     return response
+
 
 @api_view(['GET'])
 def get_cronograma_pagos(request, id_fichadc):
@@ -402,44 +411,56 @@ def putMorosidad(request, id_fichadc, id_cuota):
         # Buscar la cuota específica asociada al cronograma de pagos de esta ficha
         cuota = Cuota.objects.get(id_cuota=id_cuota, id_cpagos=ficha_cliente.id_cpagos)
 
-        # Obtener el nuevo estado del request
+        # Obtener los datos del request
         nuevo_estado = request.data.get('estado', None)
         fecha_pago = request.data.get('fecha_pago', None)
+        observaciones = request.data.get('observaciones', None)
+        codigo = request.data.get('codigo', None)
+        monto_cuota_pagado = request.data.get('monto_cuota_pagado', None)
+        moneda_pago = request.data.get('moneda_pago', None)
+        dias_morosidad = request.data.get('dias_morosidad', None)
 
-        # Validar que el nuevo estado esté presente en la solicitud
-        if nuevo_estado is None:
-            return Response({"error": "El estado es requerido"}, status=status.HTTP_400_BAD_REQUEST)
+        # Validar que el monto_cuota_pagado esté presente en la solicitud
+        if monto_cuota_pagado is None or float(monto_cuota_pagado) <= 0:
+            return Response({"error": "El monto del pago es requerido y debe ser mayor a 0."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Actualizar el estado de la cuota
-        cuota.estado = nuevo_estado
+        # Calcular el total pagado sumando todos los comprobantes asociados a la cuota antes del nuevo pago
+        total_pagado = ComprobantePago.objects.filter(id_cuota=cuota).aggregate(total=Sum('monto_cuota_pagado'))['total'] or 0
 
-        # Si el estado es True (hay morosidad), recalcular los días de morosidad
-        if cuota.estado:
-            if cuota.fecha_pago_cuota and cuota.fecha_pago_cuota < date.today():
-                dias_morosidad = (date.today() - cuota.fecha_pago_cuota).days
-                cuota.dias_morosidad = dias_morosidad
-            else:
-                cuota.dias_morosidad = 0  # Si la fecha es futura o hoy, no hay morosidad
+        # Verificar si el nuevo pago hace que el total pagado exceda el monto de la cuota
+        exceso = (total_pagado + float(monto_cuota_pagado)) - cuota.monto_cuota
+        if exceso > 0:
+            # Retornar un mensaje de exceso y permitir la creación de una nueva cuota en el frontend
+            return Response({
+                "error": "El monto total pagado excede el monto de la cuota.",
+                "exceso": exceso,
+                "monto_cuota": cuota.monto_cuota,
+                "total_pagado": total_pagado,
+                "message": "¿Deseas crear una nueva cuota con el exceso?"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Manejo de ComprobantePago: crear un nuevo comprobante
+        nuevo_comprobante = ComprobantePago.objects.create(
+            fecha_pago=fecha_pago,
+            id_cuota=cuota,
+            observaciones=observaciones,
+            codigo=codigo,
+            monto_cuota_pagado=monto_cuota_pagado,
+            moneda_pago=moneda_pago,
+            monto_cuota=cuota.monto_cuota,
+        )
+
+        # Calcular el nuevo total pagado sumando todos los comprobantes asociados a la cuota
+        total_pagado = ComprobantePago.objects.filter(id_cuota=cuota).aggregate(total=Sum('monto_cuota_pagado'))['total']
+
+        # Verificar si la suma de los comprobantes cumple con el monto de la cuota
+        if total_pagado >= cuota.monto_cuota:
+            # Si el monto pagado cumple o excede el monto de la cuota, cambiar el estado a False (pagado)
+            cuota.estado = False
+            cuota.dias_morosidad = dias_morosidad if dias_morosidad is not None else cuota.dias_morosidad
         else:
-            cuota.dias_morosidad = 0  # No hay morosidad
-
-        # Manejo de ComprobantePago
-        if fecha_pago:
-            # Obtener el último comprobante de pago para la cuota
-            comprobante = ComprobantePago.objects.filter(id_cuota=cuota).order_by('-fecha_pago').first()
-
-            if comprobante:
-                # Actualizar la fecha del último comprobante
-                comprobante.fecha_pago = fecha_pago
-                comprobante.save()
-            else:
-                # Crear un nuevo comprobante si no existe
-                nuevo_comprobante = ComprobantePago.objects.create(
-                    fecha_pago=fecha_pago,
-                    id_cuota=cuota,
-                    monto_cuota=cuota.monto_cuota,  # Asumiendo que quieres replicar el monto de la cuota
-                    moneda_pago=cuota.tipo_moneda  # Asumiendo que quieres replicar el tipo de moneda
-                )
+            # Si aún no se ha pagado el total de la cuota, mantener el estado en True (morosidad)
+            cuota.estado = True
 
         # Guardar los cambios en la cuota
         cuota.save()
@@ -449,7 +470,13 @@ def putMorosidad(request, id_fichadc, id_cuota):
             "message": f"Cuota {id_cuota} actualizada para la ficha {id_fichadc}",
             "estado": cuota.estado,
             "dias_morosidad": cuota.dias_morosidad,
-            "fecha_pago_comprobante": comprobante.fecha_pago if comprobante else nuevo_comprobante.fecha_pago
+            "fecha_pago_comprobante": nuevo_comprobante.fecha_pago,
+            "observaciones": nuevo_comprobante.observaciones,
+            "codigo": nuevo_comprobante.codigo,
+            "monto_cuota_pagado": nuevo_comprobante.monto_cuota_pagado,
+            "moneda_pago": nuevo_comprobante.moneda_pago,
+            "total_pagado": total_pagado,
+            "monto_cuota": cuota.monto_cuota
         }, status=status.HTTP_200_OK)
 
     except FichaDatosCliente.DoesNotExist:
@@ -459,6 +486,48 @@ def putMorosidad(request, id_fichadc, id_cuota):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
+
+@api_view(['POST'])
+def crearNuevaCuota(request, id_fichadc):
+    try:
+        # Buscar la ficha de datos cliente por ID
+        ficha_cliente = FichaDatosCliente.objects.get(id_fichadc=id_fichadc)
+
+        # Verificar si hay una cuota activa asociada
+        cuota_anterior = Cuota.objects.filter(id_cpagos=ficha_cliente.id_cpagos).order_by('-fecha_pago_cuota').first()
+
+        if not cuota_anterior:
+            return Response({"error": "No se encontró una cuota anterior para crear una nueva."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Obtener el exceso de pago enviado desde el frontend
+        exceso = request.data.get('exceso', None)
+
+        if exceso is None or float(exceso) <= 0:
+            return Response({"error": "El exceso de pago es requerido para crear una nueva cuota."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Crear una nueva cuota con fecha de pago aumentada en 1 mes y días de morosidad en 0
+        nueva_cuota = Cuota.objects.create(
+            fecha_pago_cuota=cuota_anterior.fecha_pago_cuota + relativedelta(months=1),  # Sumar 1 mes
+            monto_cuota=exceso,  # El monto de la nueva cuota será el exceso de la cuota anterior
+            estado=True,  # Nueva cuota aún no está pagada
+            dias_morosidad=0,
+            id_cpagos=cuota_anterior.id_cpagos,  # Mantener el cronograma de pagos asociado
+            tipo_moneda=cuota_anterior.tipo_moneda,  # Mantener la misma moneda
+        )
+
+        # Respuesta exitosa
+        return Response({
+            "message": "Nueva cuota creada con éxito",
+            "id_nueva_cuota": nueva_cuota.id_cuota,
+            "monto_cuota": nueva_cuota.monto_cuota,
+            "fecha_pago_cuota": nueva_cuota.fecha_pago_cuota
+        }, status=status.HTTP_201_CREATED)
+
+    except FichaDatosCliente.DoesNotExist:
+        return Response({"error": "Ficha de datos cliente no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 class PersonaAutocomplete(autocomplete.Select2QuerySetView):
@@ -1059,24 +1128,28 @@ def crear_cuotas(request):
         if cronograma.numero_cuotas == cronograma.numero_cuotas_pagadas:
             # Crear todas las cuotas con estado 'False' ya que el cliente pagó todo
             cuotas_creadas = []
-            
-            # Validar si existen los montos en soles, de lo contrario convertir desde dólares
-            if cronograma.precio_venta_soles is None or cronograma.cuota_inicial_soles is None:
-                if cronograma.precio_venta_dolares and cronograma.cuota_inicial_dolares and cronograma.tipo_cambio:
-                    # Convertir dólares a soles
-                    precio_venta_soles = cronograma.precio_venta_dolares * cronograma.tipo_cambio
-                    cuota_inicial_soles = cronograma.cuota_inicial_dolares * cronograma.tipo_cambio
-                else:
-                    return Response(
-                        {'error': 'Faltan valores en soles y dólares o el tipo de cambio.'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+
+            # Determinar los valores en función de la moneda
+            if cronograma.tipo_moneda.upper() == 'SOLES':
+                precio_venta = cronograma.precio_venta_soles
+                cuota_inicial = cronograma.cuota_inicial_soles
+            elif cronograma.tipo_moneda.upper() == 'DOLARES':
+                precio_venta = cronograma.precio_venta_dolares
+                cuota_inicial = cronograma.cuota_inicial_dolares
             else:
-                precio_venta_soles = cronograma.precio_venta_soles
-                cuota_inicial_soles = cronograma.cuota_inicial_soles
+                return Response(
+                    {'error': 'Tipo de moneda no válido.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if not precio_venta or not cuota_inicial:
+                return Response(
+                    {'error': 'Faltan valores de precio de venta o cuota inicial.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             # Calcular el monto de cada cuota
-            monto_cuota = (precio_venta_soles - cuota_inicial_soles) / cronograma.numero_cuotas
+            monto_cuota = (precio_venta - cuota_inicial) / cronograma.numero_cuotas
 
             # Si hay fecha_pago_cuota, siempre crear las cuotas con las fechas, reduciendo un mes por cada una
             fecha_actual = cronograma.fecha_pago_cuota
@@ -1093,9 +1166,8 @@ def crear_cuotas(request):
                     fecha_pago_cuota=fecha_cuota,
                     monto_cuota=monto_cuota,
                     id_cpagos=cronograma,
-                    pago_adelantado=False,
                     estado=False,  # El cliente ya pagó todo, no hay cuotas morosas
-                    tipo_moneda='SOLES'
+                    tipo_moneda=cronograma.tipo_moneda
                 )
                 cuotas_creadas.append(cuota.id_cuota)
 
@@ -1110,107 +1182,57 @@ def crear_cuotas(request):
                 status=status.HTTP_201_CREATED
             )
 
-        # Si no ha pagado ninguna cuota (numero_cuotas_pagadas == 0), crear una cuota morosa con estado=True
-        if cronograma.numero_cuotas_pagadas == 0:
-            if cronograma.precio_venta_soles and cronograma.cuota_inicial_soles:
-                monto_cuota = (
-                    (cronograma.precio_venta_soles - cronograma.cuota_inicial_soles) / 
-                    cronograma.numero_cuotas
-                )
+        # Continuar con el proceso normal si no ha pagado todas las cuotas
+        else:
+            # Determinar los valores en función de la moneda
+            if cronograma.tipo_moneda.upper() == 'SOLES':
+                precio_venta = cronograma.precio_venta_soles
+                cuota_inicial = cronograma.cuota_inicial_soles
+            elif cronograma.tipo_moneda.upper() == 'DOLARES':
+                precio_venta = cronograma.precio_venta_dolares
+                cuota_inicial = cronograma.cuota_inicial_dolares
             else:
-                # Validar si existen los montos en soles, de lo contrario convertir desde dólares
-                if cronograma.precio_venta_soles is None or cronograma.cuota_inicial_soles is None:
-                    if cronograma.precio_venta_dolares and cronograma.cuota_inicial_dolares and cronograma.tipo_cambio:
-                        # Convertir dólares a soles
-                        precio_venta_soles = cronograma.precio_venta_dolares * cronograma.tipo_cambio
-                        cuota_inicial_soles = cronograma.cuota_inicial_dolares * cronograma.tipo_cambio
-                    else:
-                        return Response(
-                            {'error': 'Faltan valores en soles y dólares o el tipo de cambio.'},
-                            status=status.HTTP_400_BAD_REQUEST
-                        )
-                else:
-                    precio_venta_soles = cronograma.precio_venta_soles
-                    cuota_inicial_soles = cronograma.cuota_inicial_soles
+                return Response(
+                    {'error': 'Tipo de moneda no válido.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-                monto_cuota = (precio_venta_soles - cuota_inicial_soles) / cronograma.numero_cuotas
+            if not precio_venta or not cuota_inicial:
+                return Response(
+                    {'error': 'Faltan valores de precio de venta o cuota inicial.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-            # Crear una única cuota morosa con estado=True
-            cuota = Cuota.objects.create(
-                fecha_pago_cuota=cronograma.fecha_pago_cuota,
-                monto_cuota=monto_cuota,
-                id_cpagos=cronograma,
-                pago_adelantado=False,
-                estado=True,  # Moroso
-                tipo_moneda='SOLES'
-            )
+            monto_cuota = (precio_venta - cuota_inicial) / cronograma.numero_cuotas
+
+            # Crear las cuotas
+            cuotas_creadas = []
+            fecha_actual = cronograma.fecha_pago_cuota
+            dia_original = fecha_actual.day
+
+            for i in range(cronograma.numero_cuotas_pagadas):
+                try:
+                    fecha_cuota = fecha_actual.replace(day=dia_original)
+                except ValueError:
+                    fecha_cuota = fecha_actual + relativedelta(day=31)
+
+                cuota = Cuota.objects.create(
+                    fecha_pago_cuota=fecha_cuota,
+                    monto_cuota=monto_cuota,
+                    id_cpagos=cronograma,
+                    estado=True if i == 0 else False,  # La primera cuota es morosa
+                    tipo_moneda=cronograma.tipo_moneda
+                )
+                cuotas_creadas.append(cuota.id_cuota)
+                fecha_actual -= relativedelta(months=1)
 
             return Response(
                 {
-                    'mensaje': '1 cuota creada con estado moroso.',
-                    'cuotas': [cuota.id_cuota]
+                    'mensaje': f'{len(cuotas_creadas)} cuotas creadas con éxito.',
+                    'cuotas': cuotas_creadas
                 },
                 status=status.HTTP_201_CREATED
             )
-
-        # Continuar con el proceso normal si no ha pagado todas las cuotas
-        if (
-            cronograma.numero_cuotas_pagadas and 
-            cronograma.precio_venta_soles and 
-            cronograma.cuota_inicial_soles
-        ):
-            monto_cuota = (
-                (cronograma.precio_venta_soles - cronograma.cuota_inicial_soles) / 
-                cronograma.numero_cuotas
-            )
-        else:
-            # Validar si existen los montos en soles, de lo contrario convertir desde dólares
-            if cronograma.precio_venta_soles is None or cronograma.cuota_inicial_soles is None:
-                if cronograma.precio_venta_dolares and cronograma.cuota_inicial_dolares and cronograma.tipo_cambio:
-                    # Convertir dólares a soles
-                    precio_venta_soles = cronograma.precio_venta_dolares * cronograma.tipo_cambio
-                    cuota_inicial_soles = cronograma.cuota_inicial_dolares * cronograma.tipo_cambio
-                else:
-                    return Response(
-                        {'error': 'Faltan valores en soles y dólares o el tipo de cambio.'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-            else:
-                precio_venta_soles = cronograma.precio_venta_soles
-                cuota_inicial_soles = cronograma.cuota_inicial_soles
-
-            monto_cuota = (precio_venta_soles - cuota_inicial_soles) / cronograma.numero_cuotas
-
-            
-        # Crear las cuotas morosas y no morosas
-        cuotas_creadas = []
-        fecha_actual = cronograma.fecha_pago_cuota
-        dia_original = fecha_actual.day
-
-        for i in range(cronograma.numero_cuotas_pagadas):
-            try:
-                fecha_cuota = fecha_actual.replace(day=dia_original)
-            except ValueError:
-                fecha_cuota = fecha_actual + relativedelta(day=31)
-
-            cuota = Cuota.objects.create(
-                fecha_pago_cuota=fecha_cuota,
-                monto_cuota=monto_cuota,
-                id_cpagos=cronograma,
-                pago_adelantado=False,
-                estado=True if i == 0 else False,  # La primera cuota es morosa
-                tipo_moneda='SOLES'
-            )
-            cuotas_creadas.append(cuota.id_cuota)
-            fecha_actual -= relativedelta(months=1)
-
-        return Response(
-            {
-                'mensaje': f'{len(cuotas_creadas)} cuotas creadas con éxito.',
-                'cuotas': cuotas_creadas
-            },
-            status=status.HTTP_201_CREATED
-        )
 
     except CronogramaPagos.DoesNotExist:
         return Response(

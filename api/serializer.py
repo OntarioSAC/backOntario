@@ -129,9 +129,10 @@ class CuotaSerializer(CustomModelSerializer):
         fields = [
             'id_cuota',
             'fecha_pago_cuota',
-            'pago_adelantado',
-            'monto_pago_adelantado',
             'monto_cuota',
+            'estado',
+            'dias_morosidad',
+            'tipo_moneda',
             'cpagos',
         ]
 
