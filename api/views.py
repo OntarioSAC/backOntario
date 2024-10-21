@@ -257,8 +257,6 @@ def get_cronograma_pagos(request, id_fichadc):
                 {
                     'id_cuota': cuota.id_cuota,
                     'fecha_pago_cuota': cuota.fecha_pago_cuota,
-                    'pago_adelantado': cuota.pago_adelantado,
-                    'monto_pago_adelantado': cuota.monto_pago_adelantado,
                     'monto_cuota': cuota.monto_cuota,
                     'estado': cuota.estado,
                     'dias_morosidad': cuota.dias_morosidad,
