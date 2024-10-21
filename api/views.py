@@ -1146,8 +1146,8 @@ def crear_cuotas(request):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Calcular el monto de cada cuota
-            monto_cuota = (precio_venta - cuota_inicial) / cronograma.numero_cuotas
+            # Calcular el monto de cada cuota y redondear a 2 decimales
+            monto_cuota = round((precio_venta - cuota_inicial) / cronograma.numero_cuotas, 2)
 
             # Si hay fecha_pago_cuota, siempre crear las cuotas con las fechas, reduciendo un mes por cada una
             fecha_actual = cronograma.fecha_pago_cuota
@@ -1201,7 +1201,8 @@ def crear_cuotas(request):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            monto_cuota = (precio_venta - cuota_inicial) / cronograma.numero_cuotas
+            # Calcular el monto de cada cuota y redondear a 2 decimales
+            monto_cuota = round((precio_venta - cuota_inicial) / cronograma.numero_cuotas, 2)
 
             # Crear las cuotas
             cuotas_creadas = []
