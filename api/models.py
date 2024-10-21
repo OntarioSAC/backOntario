@@ -387,8 +387,7 @@ class PasswordResetToken(models.Model):
     def is_valid(self):
         return timezone.now() - self.created_at < timedelta(hours=24)
     
-    def delete(self, *args, **kwargs):
-        raise ValidationError("La eliminación de registros no está permitida.")
+    
 
 # Fin del modelo PasswordResetToken
 # ===========================================
