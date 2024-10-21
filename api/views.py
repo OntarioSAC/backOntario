@@ -797,6 +797,10 @@ def reset_password(request, token):
 
     except PasswordResetToken.DoesNotExist:
         return Response({'error': 'Token inválido.'}, status=status.HTTP_404_NOT_FOUND)
+
+    except Exception as e:
+        # Captura cualquier otro error inesperado y devolverlo como JSON
+        return Response({'error': f'Ocurrió un error inesperado: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 
 @api_view(['POST'])
