@@ -50,6 +50,7 @@ urlpatterns=[
     path('post_lote_conyuge/', views.post_lote_conyuge, name='post_lote_conyuge'),
     path('generate_boleta_code/', views.generate_boleta_code, name='post_lote_conyuge'),
     path('get_last_boleta_code/', views.get_last_boleta_code, name='get_last_boleta_code'),
+    path('comprobantes/cuota/<int:id_cuota>/', views.get_comprobantes_by_cuota, name='get_comprobantes_by_cuota'),
     
     path('crear_cuotas/', views.crear_cuotas, name='crear_cuotas'),
     path('crear_cuotas_y_comprobantes/', views.crear_cuotas_y_comprobantes, name='crear_cuotas_y_comprobantes'),
