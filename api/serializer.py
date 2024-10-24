@@ -8,7 +8,9 @@ from django.contrib.auth.hashers import check_password
 class CustomModelSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         ret = super().to_representation(instance)
-        return {key: value for key, value in ret.items() if value}
+        # return {key: value for key, value in ret.items() if value}
+        # Mantener todos los valores excepto aquellos que sean None
+        return {key: value for key, value in ret.items() if value is not None}
 
 
 
@@ -139,7 +141,7 @@ class CuotaSerializer(CustomModelSerializer):
 
 # Serializer del modelo Cuota
 class ComprobantePagoSerializer(CustomModelSerializer):
-    cuotas = CuotaSerializer(source='id_cuota')
+    cuota = CuotaSerializer(source='id_cuota')
 
     class Meta:
         model = ComprobantePago
@@ -152,7 +154,7 @@ class ComprobantePagoSerializer(CustomModelSerializer):
             'imagen_comprobante',
             'monto_cuota_pagado',
             'moneda_pago',
-            'id_cuota',
+            'cuota',
         ]
 
 
