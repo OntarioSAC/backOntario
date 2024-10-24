@@ -52,6 +52,7 @@ urlpatterns=[
     path('get_last_boleta_code/', views.get_last_boleta_code, name='get_last_boleta_code'),
     
     path('crear_cuotas/', views.crear_cuotas, name='crear_cuotas'),
+    path('crear_cuotas_y_comprobantes/', views.crear_cuotas_y_comprobantes, name='crear_cuotas_y_comprobantes'),
     
 ]
 

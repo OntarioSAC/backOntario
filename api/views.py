@@ -2,7 +2,7 @@ from dal import autocomplete
 from datetime import datetime, date
 from rest_framework.response import Response
 from rest_framework import viewsets, status
-from .serializer import CronogramaPagosSerializer, CuotaInicialFraccionadaSerializer, CuotaSerializer, DetallePersonaSerializer, EmpresaSerializer, LoteSerializer, ObservacionSeparacionSerializer, ObservacionesSerializer, FichaDatosClienteSerializer, PersonaClientSerializer, PersonaStaffSerializer, ProyectoSerializer
+from .serializer import ComprobantePagoSerializer, CronogramaPagosSerializer, CuotaInicialFraccionadaSerializer, CuotaSerializer, DetallePersonaSerializer, EmpresaSerializer, LoteSerializer, ObservacionSeparacionSerializer, ObservacionesSerializer, FichaDatosClienteSerializer, PersonaClientSerializer, PersonaStaffSerializer, ProyectoSerializer
 from .models import ComprobantePago, CronogramaPagos, Cuota, CuotaInicialFraccionada, DetallePersona, Empresa, Lote, ObservacionSeparacion, Observaciones, FichaDatosCliente, PersonaClient, PersonaStaff, Proyecto, SeparacionCliente
 from rest_framework.views import APIView
 from django.db import connection
@@ -1233,6 +1233,195 @@ def crear_cuotas(request):
                 {
                     'mensaje': f'{len(cuotas_creadas)} cuotas creadas con éxito.',
                     'cuotas': cuotas_creadas
+                },
+                status=status.HTTP_201_CREATED
+            )
+
+    except CronogramaPagos.DoesNotExist:
+        return Response(
+            {'error': 'Cronograma de pagos no encontrado.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': f'Ocurrió un error: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+def get_comprobantes_by_cuota(request, id_cuota):
+    try:
+        # Verificar si la cuota existe
+        cuota = Cuota.objects.get(id_cuota=id_cuota)
+        
+        # Obtener todos los comprobantes de pago asociados a la cuota
+        comprobantes = ComprobantePago.objects.filter(id_cuota=cuota)
+
+        # Serializar los comprobantes de pago
+        serializer = ComprobantePagoSerializer(comprobantes, many=True)
+        
+        # Retornar los comprobantes en la respuesta
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    except Cuota.DoesNotExist:
+        return Response({'error': 'Cuota no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+
+@api_view(['POST'])
+def crear_cuotas_y_comprobantes(request):
+    try:
+        # Obtener los datos del request
+        id_cpagos = request.data.get('id_cpagos')
+        cronograma = CronogramaPagos.objects.get(id_cpagos=id_cpagos)
+
+        # Validar que el cronograma tiene la fecha de pago de cuota
+        if not cronograma.fecha_pago_cuota:
+            return Response(
+                {'error': 'El cronograma no tiene definida la fecha de pago de cuota.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Verificar si ya existen cuotas asociadas a este cronograma y eliminarlas
+        Cuota.objects.filter(id_cpagos=cronograma).delete()
+
+        # Verificar si el cliente ya pagó todas las cuotas
+        cuotas_creadas = []
+        comprobantes_creados = []
+        auto_incremental_codigo = 1  # Comenzamos con un número incremental para el código
+
+        if cronograma.numero_cuotas == cronograma.numero_cuotas_pagadas:
+            # Crear todas las cuotas con estado 'False' ya que el cliente pagó todo
+            if cronograma.tipo_moneda.upper() == 'SOLES':
+                precio_venta = cronograma.precio_venta_soles
+                cuota_inicial = cronograma.cuota_inicial_soles
+            elif cronograma.tipo_moneda.upper() == 'DOLARES':
+                precio_venta = cronograma.precio_venta_dolares
+                cuota_inicial = cronograma.cuota_inicial_dolares
+            else:
+                return Response(
+                    {'error': 'Tipo de moneda no válido.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if not precio_venta or not cuota_inicial:
+                return Response(
+                    {'error': 'Faltan valores de precio de venta o cuota inicial.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            monto_cuota = round((precio_venta - cuota_inicial) / cronograma.numero_cuotas, 2)
+            fecha_actual = cronograma.fecha_pago_cuota
+            dia_original = fecha_actual.day
+
+            for i in range(cronograma.numero_cuotas):
+                try:
+                    fecha_cuota = fecha_actual.replace(day=dia_original)
+                except ValueError:
+                    fecha_cuota = fecha_actual + relativedelta(day=31)
+
+                cuota = Cuota.objects.create(
+                    fecha_pago_cuota=fecha_cuota,
+                    monto_cuota=monto_cuota,
+                    id_cpagos=cronograma,
+                    estado=False,
+                    tipo_moneda=cronograma.tipo_moneda
+                )
+                cuotas_creadas.append(cuota.id_cuota)
+
+                # Crear el comprobante de pago asociado a la cuota
+                comprobante_pago = ComprobantePago.objects.create(
+                    fecha_pago=cuota.fecha_pago_cuota,
+                    observaciones='',  # Dejar observaciones vacío
+                    codigo=f'CP-{auto_incremental_codigo:05d}',  # Auto incremento para código
+                    monto_cuota=cuota.monto_cuota,
+                    monto_cuota_pagado=cuota.monto_cuota,
+                    moneda_pago=cuota.tipo_moneda,
+                    imagen_comprobante='',  # Dejar imagen vacío
+                    id_cuota=cuota
+                )
+                comprobantes_creados.append(comprobante_pago.id_comprobante_pago)
+
+                # Incrementar el código
+                auto_incremental_codigo += 1
+
+                fecha_actual -= relativedelta(months=1)
+
+            return Response(
+                {
+                    'mensaje': f'Todas las cuotas ({len(cuotas_creadas)}) creadas con estado False (ya pagadas).',
+                    'cuotas': cuotas_creadas,
+                    'comprobantes': comprobantes_creados
+                },
+                status=status.HTTP_201_CREATED
+            )
+
+        # Continuar con el proceso normal si no ha pagado todas las cuotas
+        else:
+            if cronograma.tipo_moneda.upper() == 'SOLES':
+                precio_venta = cronograma.precio_venta_soles
+                cuota_inicial = cronograma.cuota_inicial_soles
+            elif cronograma.tipo_moneda.upper() == 'DOLARES':
+                precio_venta = cronograma.precio_venta_dolares
+                cuota_inicial = cronograma.cuota_inicial_dolares
+            else:
+                return Response(
+                    {'error': 'Tipo de moneda no válido.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if not precio_venta or not cuota_inicial:
+                return Response(
+                    {'error': 'Faltan valores de precio de venta o cuota inicial.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            monto_cuota = round((precio_venta - cuota_inicial) / cronograma.numero_cuotas, 2)
+            fecha_actual = cronograma.fecha_pago_cuota
+            dia_original = fecha_actual.day
+
+            for i in range(cronograma.numero_cuotas_pagadas):
+                try:
+                    fecha_cuota = fecha_actual.replace(day=dia_original)
+                except ValueError:
+                    fecha_cuota = fecha_actual + relativedelta(day=31)
+
+                cuota = Cuota.objects.create(
+                    fecha_pago_cuota=fecha_cuota,
+                    monto_cuota=monto_cuota,
+                    id_cpagos=cronograma,
+                    estado=True if i == 0 else False,  # La primera cuota es morosa
+                    tipo_moneda=cronograma.tipo_moneda
+                )
+                cuotas_creadas.append(cuota.id_cuota)
+
+                # Crear el comprobante de pago asociado a la cuota
+                comprobante_pago = ComprobantePago.objects.create(
+                    fecha_pago=cuota.fecha_pago_cuota,
+                    observaciones='',  # Dejar observaciones vacío
+                    codigo=f'CP-{auto_incremental_codigo:05d}',  # Auto incremento para código
+                    monto_cuota=cuota.monto_cuota,
+                    monto_cuota_pagado=cuota.monto_cuota,
+                    moneda_pago=cuota.tipo_moneda,
+                    imagen_comprobante='',  # Dejar imagen vacío
+                    id_cuota=cuota
+                )
+                comprobantes_creados.append(comprobante_pago.id_comprobante_pago)
+
+                # Incrementar el código
+                auto_incremental_codigo += 1
+
+                fecha_actual -= relativedelta(months=1)
+
+            return Response(
+                {
+                    'mensaje': f'{len(cuotas_creadas)} cuotas creadas con éxito.',
+                    'cuotas': cuotas_creadas,
+                    'comprobantes': comprobantes_creados
                 },
                 status=status.HTTP_201_CREATED
             )
